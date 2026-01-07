@@ -36,16 +36,27 @@ public class ChallengePeakManager(PlayerInstance player) : BasePlayerManager(pla
             var levelData = GameData.ChallengePeakConfigData.GetValueOrDefault(levelId);
             if (levelData == null) continue;
 
+            // --- 自动化解锁逻辑开始 ---
+            // 只要不是该组的第一关（ID末尾不是1），就检查前一关是否通关
+            bool isFirstLevel = (levelId % 10 == 1);
+            bool hasPrevHistory = Player.ChallengeManager!.ChallengeData.PeakLevelDatas.ContainsKey(levelId - 1);
+
+            if (!isFirstLevel && !hasPrevHistory)
+            {
+                // 如果前一关没打过，直接跳过此关卡的下发
+                continue; 
+            }
+            // --- 自动化解锁逻辑结束 ---
+
             var levelProto = new ChallengePeakPreLevel
             {
                 PeakLevelId = (uint)levelId,
-                IsFinished = true
+                IsFinished = true // 注意：这里原代码默认为 true 可能是为了调试，建议改为下方的逻辑
             };
 
             if (Player.ChallengeManager!.ChallengeData.PeakLevelDatas.TryGetValue(levelId, out var levelPbData))
             {
                 starNum += (int)levelPbData.PeakStar;
-
                 levelProto.PeakRoundsCount = levelPbData.RoundCnt;
                 levelProto.PeakLevelAvatarIdList.AddRange(levelPbData.BaseAvatarList);
                 levelProto.PeakTargetList.AddRange(levelPbData.FinishedTargetList);
@@ -54,11 +65,15 @@ public class ChallengePeakManager(PlayerInstance player) : BasePlayerManager(pla
                 {
                     var avatar = Player.AvatarManager!.GetFormalAvatar((int)avatarId);
                     if (avatar == null) continue;
-
                     levelProto.PeakAvatarInfoList.Add(avatar.ToPeakAvatarProto());
                 }
 
                 proto.FinishedPreNum++;
+                levelProto.IsFinished = true; // 真正通关后才设为 true
+            }
+            else 
+            {
+                levelProto.IsFinished = false; // 未通关状态
             }
 
             proto.PeakPreLevelInfoList.Add(levelProto);
