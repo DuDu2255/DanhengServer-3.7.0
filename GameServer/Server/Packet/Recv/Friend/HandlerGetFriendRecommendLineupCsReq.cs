@@ -13,7 +13,7 @@ public override async Task OnHandle(Connection connection, byte[] header, byte[]
 {
     // 直接用响应包的 Parser 解析！
     var req = GetFriendRecommendLineupScRsp.Parser.ParseFrom(data);
-    
+    Logger.GetByClassName().Info($"收到全服阵容请求, ChallengeId (Key): {req.Key}");
     // 只要这一步能拿到 Key (也就是 ChallengeId)，后面就全通了
     var rspData = connection.Player!.FriendManager!.GetGlobalRecommendLineup(req.Key);
     
