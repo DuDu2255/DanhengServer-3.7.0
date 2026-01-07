@@ -352,7 +352,45 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
         if (!FriendData.FriendDetailList.TryGetValue(uid, out var friend)) return;
         friend.IsMark = isMark;
     }
+    public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
+{
+    var rsp = new GetFriendRecommendLineupScRsp
+    {
+        Key = challengeId,
+        Retcode = 0,
+        Type = DLLLEANDAIH.FriendRecommendLineupTypeAll // 设置为全服类型
+    };
 
+    // 1. 获取全服所有玩家的战报 (从 friend_record_data 表)
+    var allRecords = DatabaseHelper.Instance!.Context.Queryable<FriendRecordData>().ToList();
+
+    foreach (var record in allRecords)
+    {
+        // 2. 尝试从该玩家的数据中提取对应 challengeId 的最高星战报
+        var stats = record.ChallengeGroupStatistics.Values
+            .FirstOrDefault(s => (s.MemoryGroupStatistics?.Values.Any(m => m.RecordId == challengeId) ?? false));
+
+        if (stats != null)
+        {
+            var pData = PlayerData.GetPlayerByUid(record.Uid);
+            if (pData == null) continue;
+
+            // 3. 构造一行推荐战报 (注意：这里需要对接具体的混淆类 KEHMGKIHEFN)
+            var lineRecord = new KEHMGKIHEFN
+            {
+                // 这里你需要根据 KEHMGKIHEFN.cs 里的实际字段名赋值
+                // 通常包含 Uid, PlayerSimpleInfo, 和具体的 ChallengeStatistics
+            };
+
+            rsp.ChallengeRecommendList.Add(lineRecord);
+        }
+
+        // 性能控制：只展示前 10 条
+        if (rsp.ChallengeRecommendList.Count >= 10) break;
+    }
+
+    return rsp;
+}
     public GetFriendListInfoScRsp ToProto()
     {
         var proto = new GetFriendListInfoScRsp();
