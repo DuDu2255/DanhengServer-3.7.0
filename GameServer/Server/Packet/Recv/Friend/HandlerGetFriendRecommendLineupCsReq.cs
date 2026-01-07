@@ -2,7 +2,7 @@
 using EggLink.DanhengServer.Kcp;
 using EggLink.DanhengServer.Proto;
 using EggLink.DanhengServer.GameServer.Server.Packet.Send.Friend;
-
+using EggLink.DanhengServer.Util; // 添加这一行
 namespace EggLink.DanhengServer.GameServer.Server.Packet.Recv.Friend;
 
 [Opcode(CmdIds.GetFriendRecommendLineupCsReq)]
