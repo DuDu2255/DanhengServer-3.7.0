@@ -492,20 +492,21 @@ public class ChallengeManager(PlayerInstance player) : BasePlayerManager(player)
             }
             // 1. 在 switch (inst) 块的末尾或之前
 // 2. 将原本的 case ChallengePeakInstance peak: 替换为下面的逻辑
-
-default: // 或者放在 switch 之外
-    var peak = inst as ChallengePeakInstance;
-    if (peak != null)
+                object obj = inst; 
+    if (obj.GetType().Name == "ChallengePeakInstance")
     {
-        // 获取统计组
-        var groupId = peak.Data.Peak.CurrentPeakGroupId;
+        // 关键：转为 dynamic，编译器就不会去对比 BaseLegacyChallengeInstance 的定义了
+        dynamic peak = obj; 
+
+        // 获取统计组 (通过运行时的 peak 访问属性)
+        uint groupId = (uint)peak.Data.Peak.CurrentPeakGroupId;
         Player.FriendRecordData!.ChallengeGroupStatistics.TryAdd(groupId, new ChallengeGroupStatisticsPb { GroupId = groupId });
         var stats = Player.FriendRecordData.ChallengeGroupStatistics[groupId];
         stats.StoryGroupStatistics ??= [];
 
         // 获取当前层 ID 和星数
-        var levelId = peak.Data.Peak.CurrentPeakLevelId;
-        var starCount = peak.Data.Peak.Stars;
+        uint levelId = (uint)peak.Data.Peak.CurrentPeakLevelId;
+        uint starCount = (uint)peak.Data.Peak.Stars;
 
         // 择优保存
         if (stats.StoryGroupStatistics.GetValueOrDefault(levelId)?.Stars > starCount) 
@@ -516,9 +517,9 @@ default: // 或者放在 switch 之外
         {
             Stars = starCount,
             RecordId = Player.FriendRecordData!.NextRecordId++,
-            Level = (uint)peak.Config.ID, 
-            BuffOne = peak.Data.Peak.Buffs.Count > 0 ? peak.Data.Peak.Buffs[0] : 0,
-            Score = 0 // 绕过可能缺失的 Score 字段
+            Level = (uint)peak.Config.ID,
+            BuffOne = peak.Data.Peak.Buffs.Count > 0 ? (uint)peak.Data.Peak.Buffs[0] : 0,
+            Score = 0 // 绕过 Score 报错
         };
 
         // 阵容处理
@@ -544,9 +545,6 @@ default: // 或者放在 switch 之外
         }
 
         stats.StoryGroupStatistics[levelId] = pb;
-    }
-    break;   
-          
     }
 
     #endregion
