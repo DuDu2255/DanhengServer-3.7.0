@@ -36,4 +36,4 @@ jobs:
       with:
         name: DanhengServer-Windows-Release
         # 这里的路径根据你的项目名称修改，通常是 bin/Release/net9.0/
-        path: bin/Release/net9.0/
+        path: Program/bin/Release/net9.0/
