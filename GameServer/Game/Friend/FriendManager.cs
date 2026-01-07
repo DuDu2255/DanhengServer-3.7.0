@@ -352,7 +352,7 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
         if (!FriendData.FriendDetailList.TryGetValue(uid, out var friend)) return;
         friend.IsMark = isMark;
     }
-  public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
+public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
 {
     var rsp = new GetFriendRecommendLineupScRsp
     {
@@ -361,49 +361,56 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
         Type = DLLLEANDAIH.FriendRecommendLineupTypeAll
     };
 
-    // 1. 从数据库读取所有人的战报记录
-    var allRecords = DatabaseHelper.Instance!.Context.Queryable<FriendRecordData>().ToList();
+    // 目前人少，直接全表查数据库没问题
+    var allRecords = DatabaseHelper.sqlSugarScope?.Queryable<FriendRecordData>().ToList() ?? new();
 
     foreach (var record in allRecords)
     {
-        // 2. 查找该玩家是否有当前关卡 (challengeId) 的记录
+        // 匹配当前挑战 ID 的战报
         var stats = record.ChallengeGroupStatistics.Values
             .FirstOrDefault(s => (s.MemoryGroupStatistics?.Values.Any(m => m.Level == challengeId) ?? false));
 
         if (stats != null)
         {
-            var memoryData = stats.MemoryGroupStatistics!.Values.First(m => m.Level == challengeId);
             var pData = PlayerData.GetPlayerByUid(record.Uid);
             if (pData == null) continue;
 
-            // 3. 构造最底层的阵容信息 (OILPIACENNH)
+            // 拿到具体的关卡数据
+            var memoryData = stats.MemoryGroupStatistics!.Values.First(m => m.Level == challengeId);
+
+            // --- 开始多层嵌套组装 ---
             var lineupContainer = new DKHENLMAEBE();
-            foreach (var sideLineupPb in memoryData.Lineups) // 遍历上半场和下半场
+            
+            foreach (var sideLineup in memoryData.Lineups) // 遍历上下半场
             {
                 var sideProto = new GIIHBKMJKHM { PeakLevelId = challengeId };
-                foreach (var avatarPb in sideLineupPb)
+                
+                foreach (var avatar in sideLineup)
                 {
+                    // 最底层角色信息 (OILPIACENNH)
                     sideProto.AvatarList.Add(new OILPIACENNH
                     {
-                        Id = avatarPb.Id,
-                        Level = avatarPb.Level,
-                        AvatarType = avatarPb.AvatarType,
-                        Index = avatarPb.Index
+                        Id = avatar.Id,
+                        Level = avatar.Level,
+                        AvatarType = avatar.AvatarType,
+                        Index = avatar.Index
                     });
                 }
                 lineupContainer.HFPPEGIFFLM.Add(sideProto);
             }
 
-            // 4. 封装成推荐条目 (KEHMGKIHEFN)
-            rsp.ChallengeRecommendList.Add(new KEHMGKIHEFN
+            // 组装成一整行记录 (KEHMGKIHEFN)
+            var recommendEntry = new KEHMGKIHEFN
             {
                 PlayerInfo = pData.ToSimpleProto(FriendOnlineStatus.Offline),
-                PMHIBHNEPHI = lineupContainer // 关键：忘却之庭数据填入这个字段
-            });
+                PMHIBHNEPHI = lineupContainer // 忘却之庭入口
+            };
+
+            rsp.ChallengeRecommendList.Add(recommendEntry);
         }
 
-        // 性能限制：只展示前 15 条
-        if (rsp.ChallengeRecommendList.Count >= 15) break;
+        // 限制一下，免得以后人多了包太大
+        if (rsp.ChallengeRecommendList.Count >= 20) break;
     }
 
     return rsp;
