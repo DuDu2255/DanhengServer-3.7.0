@@ -549,5 +549,6 @@ public class ChallengeManager(PlayerInstance player) : BasePlayerManager(player)
 
     #endregion
 }
+}
 
 // WatchAndyTW was here
