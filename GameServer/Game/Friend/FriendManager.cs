@@ -352,38 +352,42 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
         if (!FriendData.FriendDetailList.TryGetValue(uid, out var friend)) return;
         friend.IsMark = isMark;
     }
-    public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
+  public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
 {
     var rsp = new GetFriendRecommendLineupScRsp
     {
         Key = challengeId,
         Retcode = 0,
-        // 修正点：将 DLLLEANDAIH.FriendRecommendLineupTypeAll 替换为强转 (DLLLEANDAIH)2
-        Type = (DLLLEANDAIH)2 
+        Type = (DLLLEANDAIH)2 // 2 通常代表全服推荐
     };
 
-    // 1. 从数据库读取所有人的战报记录
+    // 从数据库获取所有好友战报记录
     var allRecords = DatabaseHelper.sqlSugarScope?.Queryable<FriendRecordData>().ToList() ?? new();
 
     foreach (var record in allRecords)
     {
-        // 2. 匹配当前挑战 ID 的战报
-        var stats = record.ChallengeGroupStatistics.Values
-            .FirstOrDefault(s => (s.MemoryGroupStatistics?.Values.Any(m => m.Level == challengeId) ?? false));
+        // 在所有 ChallengeGroupStatistics 字典中寻找包含该关卡 ID 的统计数据
+        // 因为 challengeId 可能在 Memory(忘却), Story(虚构), 或 Boss(末日) 中
+        ChallengeAvatarInfoPb[]? foundLineup = null;
+        
+        // 查找忘却之庭 (Memory)
+        var memoryStats = record.ChallengeGroupStatistics.Values
+            .SelectMany(g => g.MemoryGroupStatistics?.Values ?? Enumerable.Empty<MemoryGroupStatisticsPb>())
+            .FirstOrDefault(m => m.Level == challengeId);
 
-        if (stats != null)
+        if (memoryStats != null)
         {
             var pData = PlayerData.GetPlayerByUid(record.Uid);
             if (pData == null) continue;
 
-            var memoryData = stats.MemoryGroupStatistics!.Values.First(m => m.Level == challengeId);
-
-            // --- 开始多层嵌套组装 ---
+            // 构建 3.7.0 混淆的战报容器 (DKHENLMAEBE)
             var lineupContainer = new DKHENLMAEBE();
-            foreach (var sideLineup in memoryData.Lineups) 
+            
+            // 遍历 memoryStats 里的双阵容 (Lineups 是 List<List<...>>)
+            foreach (var side in memoryStats.Lineups)
             {
                 var sideProto = new GIIHBKMJKHM { PeakLevelId = challengeId };
-                foreach (var avatar in sideLineup)
+                foreach (var avatar in side)
                 {
                     sideProto.AvatarList.Add(new OILPIACENNH
                     {
@@ -396,18 +400,17 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
                 lineupContainer.HFPPEGIFFLM.Add(sideProto);
             }
 
-            // 修正点：根据 KEHMGKIHEFN 的字段名填充
-            var recommendEntry = new KEHMGKIHEFN
+            // 组装最终条目
+            var entry = new KEHMGKIHEFN
             {
                 PlayerInfo = pData.ToSimpleProto(FriendOnlineStatus.Offline),
-                PMHIBHNEPHI = lineupContainer // 忘却之庭入口
+                PMHIBHNEPHI = lineupContainer // 忘却之庭对应字段
             };
 
-            // 修正点：使用 challenge_recommend_list 对应的 C# 属性名 ChallengeRecommendList
-            rsp.ChallengeRecommendList.Add(recommendEntry);
+            rsp.ChallengeRecommendList.Add(entry);
         }
 
-        if (rsp.ChallengeRecommendList.Count >= 15) break;
+        if (rsp.ChallengeRecommendList.Count >= 20) break;
     }
 
     return rsp;
