@@ -300,9 +300,9 @@ public class ChallengeManager(PlayerInstance player) : BasePlayerManager(player)
     {
         switch (inst)
         {   // 在 SaveBattleRecord 方法的 switch (inst) 块中添加
-case ChallengePeakInstance peak:
+            case ChallengePeakInstance peak:
 {
-    // 1. 获取当前挑战组的统计对象，如果没有则创建一个
+    // 1. 获取统计数据组 (使用 CurrentPeakGroupId)
     Player.FriendRecordData!.ChallengeGroupStatistics.TryAdd((uint)peak.Data.Peak.CurrentPeakGroupId,
         new ChallengeGroupStatisticsPb
         {
@@ -310,41 +310,41 @@ case ChallengePeakInstance peak:
         });
     var stats = Player.FriendRecordData.ChallengeGroupStatistics[(uint)peak.Data.Peak.CurrentPeakGroupId];
 
-    // 2. 确保 StoryGroupStatistics 已初始化（虚构叙事在战绩协议中通常共用 Story 字段）
     stats.StoryGroupStatistics ??= [];
 
-    // 3. 计算星数 (根据虚构叙事的逻辑，通常直接从 Data 中读取)
-    var starCount = peak.Data.Peak.Stars; 
+    // 2. 获取星数 (Peak 模式特有字段)
+    var starCount = peak.Data.Peak.Stars;
 
-    // 4. 择优保存：如果现有战绩的星数更高，则跳过
+    // 3. 择优保存逻辑
     if (stats.StoryGroupStatistics.GetValueOrDefault((uint)peak.Data.Peak.CurrentPeakLevelId)?.Stars > starCount) 
         return;
 
-    // 5. 构建战绩 Proto 对象
+    // 4. 构建战绩 Proto 对象
     var pb = new StoryGroupStatisticsPb
     {
         Stars = starCount,
         RecordId = Player.FriendRecordData!.NextRecordId++,
-        Level = peak.Config.Floor,
-        // 获取选中的 Buff（虚构叙事通常只选一个）
+        // 修复：ChallengePeakConfigExcel 没有 Floor，使用 ID 代替展示层级
+        Level = (uint)peak.Config.ID, 
+        // 记录 Buff
         BuffOne = peak.Data.Peak.Buffs.Count > 0 ? peak.Data.Peak.Buffs[0] : 0,
-        Score = (uint)peak.GetTotalScore()
+        // 修复：使用 Data 里的 Score 字段，PeakInstance 没有 GetTotalScore 方法
+        Score = peak.Data.Peak.Score 
     };
 
-    // 6. 记录阵容数据
-    // 虚构叙事通常只有一队或根据 StageNum 判断
-    List<ExtraLineupType> lineupTypes = [ ExtraLineupType.LineupChallenge ];
-    if (peak.Config.StageNum >= 2) lineupTypes.Add(ExtraLineupType.LineupChallenge2);
+    // 5. 记录阵容数据 (修复 StageNum 报错)
+    // 虚构叙事通常涉及两队，这里直接尝试获取两组阵容
+    List<ExtraLineupType> lineupTypes = [ ExtraLineupType.LineupChallenge, ExtraLineupType.LineupChallenge2 ];
 
     foreach (var type in lineupTypes)
     {
         var lineup = Player.LineupManager!.GetExtraLineup(type);
-        if (lineup == null) continue;
+        if (lineup == null || lineup.BaseAvatars == null) continue;
 
         var index = 0u;
         var lineupPb = new List<ChallengeAvatarInfoPb>();
 
-        foreach (var avatar in lineup.BaseAvatars ?? [])
+        foreach (var avatar in lineup.BaseAvatars)
         {
             var formalAvatar = Player.AvatarManager!.GetFormalAvatar(avatar.BaseAvatarId);
             if (formalAvatar == null) continue;
@@ -357,13 +357,14 @@ case ChallengePeakInstance peak:
                 Level = (uint)formalAvatar.Level
             });
         }
-        pb.Lineups.Add(lineupPb);
+        
+        if (lineupPb.Count > 0)
+            pb.Lineups.Add(lineupPb);
     }
 
-    // 7. 写入统计数据
     stats.StoryGroupStatistics[(uint)peak.Data.Peak.CurrentPeakLevelId] = pb;
     break;
-}
+}    
             case ChallengeMemoryInstance memory:
             {
                 Player.FriendRecordData!.ChallengeGroupStatistics.TryAdd((uint)memory.Config.GroupID,
