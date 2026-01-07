@@ -490,60 +490,62 @@ public class ChallengeManager(PlayerInstance player) : BasePlayerManager(player)
                 break;
                 
             }
-                case ChallengePeakInstance peak:
-{
-    // 1. 获取统计组
-    var groupId = peak.Data.Peak.CurrentPeakGroupId;
-    Player.FriendRecordData!.ChallengeGroupStatistics.TryAdd(groupId, new ChallengeGroupStatisticsPb { GroupId = groupId });
-    var stats = Player.FriendRecordData.ChallengeGroupStatistics[groupId];
-    stats.StoryGroupStatistics ??= [];
+            // 1. 在 switch (inst) 块的末尾或之前
+// 2. 将原本的 case ChallengePeakInstance peak: 替换为下面的逻辑
 
-    // 2. 获取当前层 ID 和星数
-    var levelId = peak.Data.Peak.CurrentPeakLevelId;
-    var starCount = peak.Data.Peak.Stars;
-
-    // 3. 择优保存
-    if (stats.StoryGroupStatistics.GetValueOrDefault(levelId)?.Stars > starCount) 
-        return;
-
-    // 4. 构建战绩
-    var pb = new StoryGroupStatisticsPb
+default: // 或者放在 switch 之外
+    var peak = inst as ChallengePeakInstance;
+    if (peak != null)
     {
-        Stars = starCount,
-        RecordId = Player.FriendRecordData!.NextRecordId++,
-        // 使用 Config.ID 作为层级标识
-        Level = (uint)peak.Config.ID, 
-        BuffOne = peak.Data.Peak.Buffs.Count > 0 ? peak.Data.Peak.Buffs[0] : 0,
-        // 关键：由于你的 Proto 里可能没 Score，这里我们直接填 0 确保编译通过
-        // 或者如果你确认 Data.Peak 里有相关得分字段再替换
-        Score = 0 
-    };
+        // 获取统计组
+        var groupId = peak.Data.Peak.CurrentPeakGroupId;
+        Player.FriendRecordData!.ChallengeGroupStatistics.TryAdd(groupId, new ChallengeGroupStatisticsPb { GroupId = groupId });
+        var stats = Player.FriendRecordData.ChallengeGroupStatistics[groupId];
+        stats.StoryGroupStatistics ??= [];
 
-    // 5. 阵容处理 (直接遍历两队)
-    foreach (var type in new[] { ExtraLineupType.LineupChallenge, ExtraLineupType.LineupChallenge2 })
-    {
-        var lineup = Player.LineupManager!.GetExtraLineup(type);
-        if (lineup?.BaseAvatars == null) continue;
+        // 获取当前层 ID 和星数
+        var levelId = peak.Data.Peak.CurrentPeakLevelId;
+        var starCount = peak.Data.Peak.Stars;
 
-        var lineupPb = new List<ChallengeAvatarInfoPb>();
-        uint index = 0;
-        foreach (var avatar in lineup.BaseAvatars)
+        // 择优保存
+        if (stats.StoryGroupStatistics.GetValueOrDefault(levelId)?.Stars > starCount) 
+            return;
+
+        // 构建战绩
+        var pb = new StoryGroupStatisticsPb
         {
-            var formal = Player.AvatarManager!.GetFormalAvatar(avatar.BaseAvatarId);
-            if (formal == null) continue;
-            lineupPb.Add(new ChallengeAvatarInfoPb { 
-                Index = index++, 
-                Id = (uint)formal.BaseAvatarId, 
-                AvatarType = AvatarType.AvatarFormalType, 
-                Level = (uint)formal.Level 
-            });
-        }
-        if (lineupPb.Count > 0) pb.Lineups.Add(lineupPb);
-    }
+            Stars = starCount,
+            RecordId = Player.FriendRecordData!.NextRecordId++,
+            Level = (uint)peak.Config.ID, 
+            BuffOne = peak.Data.Peak.Buffs.Count > 0 ? peak.Data.Peak.Buffs[0] : 0,
+            Score = 0 // 绕过可能缺失的 Score 字段
+        };
 
-    stats.StoryGroupStatistics[levelId] = pb;
-    break;
-}
+        // 阵容处理
+        foreach (var type in new[] { ExtraLineupType.LineupChallenge, ExtraLineupType.LineupChallenge2 })
+        {
+            var lineup = Player.LineupManager!.GetExtraLineup(type);
+            if (lineup?.BaseAvatars == null) continue;
+
+            var lineupPb = new List<ChallengeAvatarInfoPb>();
+            uint index = 0;
+            foreach (var avatar in lineup.BaseAvatars)
+            {
+                var formal = Player.AvatarManager!.GetFormalAvatar(avatar.BaseAvatarId);
+                if (formal == null) continue;
+                lineupPb.Add(new ChallengeAvatarInfoPb { 
+                    Index = index++, 
+                    Id = (uint)formal.BaseAvatarId, 
+                    AvatarType = AvatarType.AvatarFormalType, 
+                    Level = (uint)formal.Level 
+                });
+            }
+            if (lineupPb.Count > 0) pb.Lineups.Add(lineupPb);
+        }
+
+        stats.StoryGroupStatistics[levelId] = pb;
+    }
+    break;   
           
     }
 
