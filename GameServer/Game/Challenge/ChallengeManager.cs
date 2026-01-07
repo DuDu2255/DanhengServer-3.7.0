@@ -299,7 +299,71 @@ public class ChallengeManager(PlayerInstance player) : BasePlayerManager(player)
     public void SaveBattleRecord(BaseLegacyChallengeInstance inst)
     {
         switch (inst)
+        {   // 在 SaveBattleRecord 方法的 switch (inst) 块中添加
+case ChallengePeakInstance peak:
+{
+    // 1. 获取当前挑战组的统计对象，如果没有则创建一个
+    Player.FriendRecordData!.ChallengeGroupStatistics.TryAdd((uint)peak.Data.Peak.CurrentPeakGroupId,
+        new ChallengeGroupStatisticsPb
         {
+            GroupId = (uint)peak.Data.Peak.CurrentPeakGroupId
+        });
+    var stats = Player.FriendRecordData.ChallengeGroupStatistics[(uint)peak.Data.Peak.CurrentPeakGroupId];
+
+    // 2. 确保 StoryGroupStatistics 已初始化（虚构叙事在战绩协议中通常共用 Story 字段）
+    stats.StoryGroupStatistics ??= [];
+
+    // 3. 计算星数 (根据虚构叙事的逻辑，通常直接从 Data 中读取)
+    var starCount = peak.Data.Peak.Stars; 
+
+    // 4. 择优保存：如果现有战绩的星数更高，则跳过
+    if (stats.StoryGroupStatistics.GetValueOrDefault((uint)peak.Data.Peak.CurrentPeakLevelId)?.Stars > starCount) 
+        return;
+
+    // 5. 构建战绩 Proto 对象
+    var pb = new StoryGroupStatisticsPb
+    {
+        Stars = starCount,
+        RecordId = Player.FriendRecordData!.NextRecordId++,
+        Level = peak.Config.Floor,
+        // 获取选中的 Buff（虚构叙事通常只选一个）
+        BuffOne = peak.Data.Peak.Buffs.Count > 0 ? peak.Data.Peak.Buffs[0] : 0,
+        Score = (uint)peak.GetTotalScore()
+    };
+
+    // 6. 记录阵容数据
+    // 虚构叙事通常只有一队或根据 StageNum 判断
+    List<ExtraLineupType> lineupTypes = [ ExtraLineupType.LineupChallenge ];
+    if (peak.Config.StageNum >= 2) lineupTypes.Add(ExtraLineupType.LineupChallenge2);
+
+    foreach (var type in lineupTypes)
+    {
+        var lineup = Player.LineupManager!.GetExtraLineup(type);
+        if (lineup == null) continue;
+
+        var index = 0u;
+        var lineupPb = new List<ChallengeAvatarInfoPb>();
+
+        foreach (var avatar in lineup.BaseAvatars ?? [])
+        {
+            var formalAvatar = Player.AvatarManager!.GetFormalAvatar(avatar.BaseAvatarId);
+            if (formalAvatar == null) continue;
+
+            lineupPb.Add(new ChallengeAvatarInfoPb
+            {
+                Index = index++,
+                Id = (uint)formalAvatar.BaseAvatarId,
+                AvatarType = AvatarType.AvatarFormalType,
+                Level = (uint)formalAvatar.Level
+            });
+        }
+        pb.Lineups.Add(lineupPb);
+    }
+
+    // 7. 写入统计数据
+    stats.StoryGroupStatistics[(uint)peak.Data.Peak.CurrentPeakLevelId] = pb;
+    break;
+}
             case ChallengeMemoryInstance memory:
             {
                 Player.FriendRecordData!.ChallengeGroupStatistics.TryAdd((uint)memory.Config.GroupID,
