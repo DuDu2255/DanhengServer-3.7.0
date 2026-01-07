@@ -352,21 +352,22 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
         if (!FriendData.FriendDetailList.TryGetValue(uid, out var friend)) return;
         friend.IsMark = isMark;
     }
-public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
+    public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
 {
     var rsp = new GetFriendRecommendLineupScRsp
     {
         Key = challengeId,
         Retcode = 0,
-        Type = DLLLEANDAIH.FriendRecommendLineupTypeAll
+        // 修正点：将 DLLLEANDAIH.FriendRecommendLineupTypeAll 替换为强转 (DLLLEANDAIH)2
+        Type = (DLLLEANDAIH)2 
     };
 
-    // 目前人少，直接全表查数据库没问题
+    // 1. 从数据库读取所有人的战报记录
     var allRecords = DatabaseHelper.sqlSugarScope?.Queryable<FriendRecordData>().ToList() ?? new();
 
     foreach (var record in allRecords)
     {
-        // 匹配当前挑战 ID 的战报
+        // 2. 匹配当前挑战 ID 的战报
         var stats = record.ChallengeGroupStatistics.Values
             .FirstOrDefault(s => (s.MemoryGroupStatistics?.Values.Any(m => m.Level == challengeId) ?? false));
 
@@ -375,19 +376,15 @@ public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
             var pData = PlayerData.GetPlayerByUid(record.Uid);
             if (pData == null) continue;
 
-            // 拿到具体的关卡数据
             var memoryData = stats.MemoryGroupStatistics!.Values.First(m => m.Level == challengeId);
 
             // --- 开始多层嵌套组装 ---
             var lineupContainer = new DKHENLMAEBE();
-            
-            foreach (var sideLineup in memoryData.Lineups) // 遍历上下半场
+            foreach (var sideLineup in memoryData.Lineups) 
             {
                 var sideProto = new GIIHBKMJKHM { PeakLevelId = challengeId };
-                
                 foreach (var avatar in sideLineup)
                 {
-                    // 最底层角色信息 (OILPIACENNH)
                     sideProto.AvatarList.Add(new OILPIACENNH
                     {
                         Id = avatar.Id,
@@ -399,18 +396,18 @@ public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
                 lineupContainer.HFPPEGIFFLM.Add(sideProto);
             }
 
-            // 组装成一整行记录 (KEHMGKIHEFN)
+            // 修正点：根据 KEHMGKIHEFN 的字段名填充
             var recommendEntry = new KEHMGKIHEFN
             {
                 PlayerInfo = pData.ToSimpleProto(FriendOnlineStatus.Offline),
                 PMHIBHNEPHI = lineupContainer // 忘却之庭入口
             };
 
+            // 修正点：使用 challenge_recommend_list 对应的 C# 属性名 ChallengeRecommendList
             rsp.ChallengeRecommendList.Add(recommendEntry);
         }
 
-        // 限制一下，免得以后人多了包太大
-        if (rsp.ChallengeRecommendList.Count >= 20) break;
+        if (rsp.ChallengeRecommendList.Count >= 15) break;
     }
 
     return rsp;
