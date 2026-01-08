@@ -15,29 +15,32 @@ public class LoginActivityData
     public Dictionary<uint, List<uint>> TakenRewards { get; set; } = new();
     public Dictionary<uint, uint> LoginDays { get; set; } = new();
     public long LastUpdateTick { get; set; }
+
     public List<EggLink.DanhengServer.Proto.LoginActivityData> ToProto()
-{
-    var protoList = new List<EggLink.DanhengServer.Proto.LoginActivityData>();
-
-    foreach (var kv in LoginDays)
     {
-        // 关键点：显式指定 EggLink.DanhengServer.Proto.LoginActivityData
-        var protoData = new EggLink.DanhengServer.Proto.LoginActivityData
-        {
-            Id = kv.Key,
-            LoginDays = kv.Value
-        };
+        var protoList = new List<EggLink.DanhengServer.Proto.LoginActivityData>();
 
-        if (TakenRewards.TryGetValue(kv.Key, out var takenList))
+        foreach (var kv in LoginDays)
         {
-            // 这里现在能正确识别协议类中的 MLGBIGIECCO 列表了
-            protoData.MLGBIGIECCO.AddRange(takenList);
+            // 使用全限定名引用协议类
+            var protoData = new EggLink.DanhengServer.Proto.LoginActivityData
+            {
+                Id = kv.Key,
+                LoginDays = kv.Value,
+                PanelId = 10130 // 这里可以根据活动类型动态设置
+            };
+
+            if (TakenRewards.TryGetValue(kv.Key, out var takenList))
+            {
+                // 【核心修正】：使用混淆名 JLHOGGDHMHG
+                protoData.JLHOGGDHMHG.AddRange(takenList);
+            }
+
+            protoList.Add(protoData);
         }
 
-        protoList.Add(protoData);
+        return protoList;
     }
-
-    return protoList;
 }
     
 }
