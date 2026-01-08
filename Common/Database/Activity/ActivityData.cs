@@ -43,7 +43,7 @@ public class LoginActivityData
     }
 }
     
-}
+
 public class TrialActivityData
 {
     public List<TrialActivityResultData> Activities { get; set; } = new();
