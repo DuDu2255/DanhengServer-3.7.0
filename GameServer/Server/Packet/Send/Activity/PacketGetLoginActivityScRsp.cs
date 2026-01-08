@@ -1,12 +1,13 @@
 using EggLink.DanhengServer.Kcp;
 using EggLink.DanhengServer.Proto;
+using EggLink.DanhengServer.GameServer.Game.Player;
 using Google.Protobuf;
 
 namespace EggLink.DanhengServer.GameServer.Server.Packet.Send.Activity;
 
-public class PacketGetLoginActivityScRsp : NetPacket
+// 在 3.7.0 版本中，基类是 BasePacket
+public class PacketGetLoginActivityScRsp : BasePacket
 {
-    // 构造函数，传入 Player 对象以获取其活动进度
     public PacketGetLoginActivityScRsp(PlayerInstance player) : base(CmdIds.GetLoginActivityScRsp)
     {
         var rsp = new GetLoginActivityScRsp
@@ -14,12 +15,11 @@ public class PacketGetLoginActivityScRsp : NetPacket
             Retcode = 0
         };
 
-        // 调用你之前在 ActivityData.cs 中定义的 ToProto 方法
-        // 这一步会将数据库中的登录天数和已领奖励列表填充进响应包
+        // 填充活动列表逻辑
         var loginDataList = player.ActivityManager.Data.LoginActivityData.ToProto();
         rsp.LoginActivityList.AddRange(loginDataList);
 
-        // 将 Protobuf 对象序列化为字节数组存入 NetPacket 的 Data
+        // 设置 BasePacket 的 Data 属性
         this.Data = rsp.ToByteArray();
     }
 }
