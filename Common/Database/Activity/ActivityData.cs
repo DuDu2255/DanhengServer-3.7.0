@@ -15,19 +15,35 @@ public class LoginActivityData
     public Dictionary<uint, List<uint>> TakenRewards { get; set; } = new();
     public Dictionary<uint, uint> LoginDays { get; set; } = new();
     public long LastUpdateTick { get; set; }
+    public List<EggLink.DanhengServer.Proto.LoginActivityData> ToProto()
+{
+    var protoList = new List<EggLink.DanhengServer.Proto.LoginActivityData>();
 
-    public List<Proto.LoginActivityData> ToProto()
+    foreach (var kv in LoginDays)
     {
-        var proto = new List<Proto.LoginActivityData>();
-        foreach (var kv in LoginDays)
+        var activityId = kv.Key;
+        var days = kv.Value;
+
+        var protoData = new EggLink.DanhengServer.Proto.LoginActivityData
         {
-            var data = new Proto.LoginActivityData { Id = kv.Key, LoginDays = kv.Value };
-            if (TakenRewards.TryGetValue(kv.Key, out var takenList))
-                data.MLGBIGIECCO.AddRange(takenList);
-            proto.Add(data);
+            Id = activityId,
+            LoginDays = days,
+            // 注意：这里不要写 MLGBIGIECCO = ...
+        };
+
+        // 必须使用 AddRange 将数据库里的 List 导入到 Proto 的 RepeatedField 中
+        if (TakenRewards.TryGetValue(activityId, out var takenList))
+        {
+            // 确保 takenList 是 List<uint>，然后加入到混淆名的字段中
+            protoData.MLGBIGIECCO.AddRange(takenList); 
         }
-        return proto;
+
+        protoList.Add(protoData);
     }
+
+    return protoList;
+}
+    
 }
 public class TrialActivityData
 {
