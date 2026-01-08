@@ -264,8 +264,7 @@ public partial class PlayerInstance(PlayerData data)
     }
 
     public async ValueTask OnLogin()
-    {   // --- 关键：在这里添加调用 ---
-        this.ActivityManager?.UpdateLoginDays();
+    {   
         await SendPacket(new PacketStaminaInfoScNotify(this));
         
         ChallengeManager?.ResurrectInstance();
@@ -323,7 +322,9 @@ public partial class PlayerInstance(PlayerData data)
 
         await LoadScene(Data.PlaneId, Data.FloorId, Data.EntryId, Data.Pos!, Data.Rot!, false);
         if (SceneInstance == null) await EnterScene(2000101, 0, false);
-
+        // --- 核心修改：放在这里 ---
+        this.ActivityManager?.UpdateLoginDays(); 
+        // ------------------------
         InvokeOnPlayerLogin(this);
     }
 
