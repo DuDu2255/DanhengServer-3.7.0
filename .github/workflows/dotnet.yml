@@ -9,10 +9,10 @@ permissions:
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "3.7.0" ]
     paths: [ "**.cs" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "3.7.0" ]
     paths: [ "**.cs" ]
   workflow_dispatch:
   
