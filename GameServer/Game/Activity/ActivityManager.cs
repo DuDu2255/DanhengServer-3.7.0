@@ -125,7 +125,7 @@ public class ActivityManager : BasePlayerManager
         }
 
         // 3. 定义奖励序列 (1, 1, 2, 1, 1, 1, 3)
-        uint rewardItemId = 1101; // 星轨专票
+        uint rewardItemId = 101; // 星轨专票
         uint count = takeDays switch
         {
             1 => 1, 2 => 1, 3 => 2, 4 => 1, 5 => 1, 6 => 1, 7 => 3,
