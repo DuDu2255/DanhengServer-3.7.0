@@ -21,21 +21,17 @@ public class LoginActivityData
 
     foreach (var kv in LoginDays)
     {
-        var activityId = kv.Key;
-        var days = kv.Value;
-
+        // 关键点：显式指定 EggLink.DanhengServer.Proto.LoginActivityData
         var protoData = new EggLink.DanhengServer.Proto.LoginActivityData
         {
-            Id = activityId,
-            LoginDays = days,
-            // 注意：这里不要写 MLGBIGIECCO = ...
+            Id = kv.Key,
+            LoginDays = kv.Value
         };
 
-        // 必须使用 AddRange 将数据库里的 List 导入到 Proto 的 RepeatedField 中
-        if (TakenRewards.TryGetValue(activityId, out var takenList))
+        if (TakenRewards.TryGetValue(kv.Key, out var takenList))
         {
-            // 确保 takenList 是 List<uint>，然后加入到混淆名的字段中
-            protoData.MLGBIGIECCO.AddRange(takenList); 
+            // 这里现在能正确识别协议类中的 MLGBIGIECCO 列表了
+            protoData.MLGBIGIECCO.AddRange(takenList);
         }
 
         protoList.Add(protoData);
