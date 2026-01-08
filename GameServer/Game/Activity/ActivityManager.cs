@@ -14,19 +14,16 @@ public class ActivityManager : BasePlayerManager
     {
         Data = DatabaseHelper.Instance!.GetInstanceOrCreateNew<ActivityData>(player.Uid);
 
-        if (Data.TrialActivityData.CurTrialStageId != 0) TrialActivityInstance = new TrialActivityInstance(this);
+        if (Data.TrialActivityData.CurTrialStageId != 0) 
+            TrialActivityInstance = new TrialActivityInstance(this);
     }
 
     #region Data
-
     public ActivityData Data { get; set; }
-
     #endregion
 
     #region Instance
-
     public TrialActivityInstance? TrialActivityInstance { get; set; }
-
     #endregion
 
     /// <summary>
@@ -44,10 +41,9 @@ public class ActivityManager : BasePlayerManager
             uint[] targetCheckInIds = { 1001801, 1002301, 1002801 };
 
             // 2. 从配置中筛选出“当前时间点”在有效期内的活动
-            // 使用 Convert.ToInt64 显式转换字符串
-		var activeSchedules = GameData.ActivityConfig.ScheduleData
-    	.Where(s => now >= Convert.ToInt64(s.BeginTime) && now <= Convert.ToInt64(s.EndTime))
-    	.ToList();
+            var activeSchedules = GameData.ActivityConfig.ScheduleData
+                .Where(s => now >= Convert.ToInt64(s.BeginTime) && now <= Convert.ToInt64(s.EndTime))
+                .ToList();
 
             bool updated = false;
             foreach (var schedule in activeSchedules)
@@ -69,13 +65,15 @@ public class ActivityManager : BasePlayerManager
                 }
             }
 
-            // 4. 只要跨天了，就同步最后检查的时间戳，防止同天内重复触发
+            // 4. 同步最后检查的时间戳
             loginData.LastUpdateTick = now;
             
-            // 只要发生了数据变动（无论是天数加了，还是时间记录点变了），就同步到数据库
+            // 同步到数据库
             DatabaseHelper.SaveInstance(this.Player.Data);
             
-            
+            // 在此处打印日志，解决 updated 变量作用域问题并消除警告
+            var logger = Logger.GetByClassName();
+            logger.Info($"玩家 {Player.Uid} 签到检查完成。是否有天数更新: {updated}");
         }
     }
 
@@ -94,48 +92,53 @@ public class ActivityManager : BasePlayerManager
 
         return proto;
     }
-     // ActivityManager.cs 里的方法定义
-public async Task<(ItemList items, uint panelId, uint retcode)> TakeLoginReward(uint activityId, uint takeDays)
-{
-    var items = new ItemList();
-    var loginData = Data.LoginActivityData;
 
-    // 查找当前活动的 PanelId
-    var schedule = GameData.ActivityConfig.ScheduleData.FirstOrDefault(s => s.ActivityId == activityId);
-    uint currentPanelId = (uint)(schedule?.PanelId ?? 10130);
-
-    // 1. 进度检查
-    if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
-        return (items, currentPanelId, 2003);
-
-    // 2. 重复领取检查
-    if (!loginData.TakenRewards.ContainsKey(activityId))
-        loginData.TakenRewards[activityId] = new List<uint>();
-
-    if (loginData.TakenRewards[activityId].Contains(takeDays))
-        return (items, currentPanelId, 2002);
-
-    // 3. 数量序列 (1, 1, 2, 1, 1, 1, 3)
-    uint rewardItemId = 1101; 
-    uint count = takeDays switch
+    /// <summary>
+    /// 领取签到奖励
+    /// </summary>
+    public async Task<(ItemList items, uint panelId, uint retcode)> TakeLoginReward(uint activityId, uint takeDays)
     {
-        1 => 1, 2 => 1, 3 => 2, 4 => 1, 5 => 1, 6 => 1, 7 => 3,
-        _ => 0
-    };
+        var items = new ItemList();
+        var loginData = Data.LoginActivityData;
 
-    // 4. 发放奖励
-    if (count > 0 && Player.InventoryManager != null)
-    {
-        items.ItemList_.Add(new Item { ItemId = rewardItemId, Num = count });
-        await Player.InventoryManager.AddItem((int)rewardItemId, (int)count, notify: true);
-    }
+        // 查找当前活动的 PanelId
+        var schedule = GameData.ActivityConfig.ScheduleData.FirstOrDefault(s => s.ActivityId == activityId);
+        uint currentPanelId = (uint)(schedule?.PanelId ?? 10130);
 
-    // 5. 保存
-    loginData.TakenRewards[activityId].Add(takeDays);
-    DatabaseHelper.SaveInstance(this.Player.Data);
-    // 修复：获取日志实例并打印，同时消掉 updated 变量未使用的警告
+        // 1. 进度检查
+        if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
+            return (items, currentPanelId, 2003);
+
+        // 2. 重复领取检查
+        if (!loginData.TakenRewards.ContainsKey(activityId))
+            loginData.TakenRewards[activityId] = new List<uint>();
+
+        if (loginData.TakenRewards[activityId].Contains(takeDays))
+            return (items, currentPanelId, 2002);
+
+        // 3. 数量序列 (1, 1, 2, 1, 1, 1, 3)
+        uint rewardItemId = 1101; 
+        uint count = takeDays switch
+        {
+            1 => 1, 2 => 1, 3 => 2, 4 => 1, 5 => 1, 6 => 1, 7 => 3,
+            _ => 0
+        };
+
+        // 4. 发放奖励
+        if (count > 0 && Player.InventoryManager != null)
+        {
+            items.ItemList_.Add(new Item { ItemId = rewardItemId, Num = count });
+            await Player.InventoryManager.AddItem((int)rewardItemId, (int)count, notify: true);
+        }
+
+        // 5. 保存
+        loginData.TakenRewards[activityId].Add(takeDays);
+        DatabaseHelper.SaveInstance(this.Player.Data);
+        
+        // 打印领奖日志
         var logger = Logger.GetByClassName();
-        logger.Info($"玩家 {Player.Uid} 签到检查完成。是否有天数更新: {updated}");
-    return (items, currentPanelId, 0); 
-}
+        logger.Info($"玩家 {Player.Uid} 成功领取活动 {activityId} 第 {takeDays} 天奖励");
+
+        return (items, currentPanelId, 0); 
+    }
 }
