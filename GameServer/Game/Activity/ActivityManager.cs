@@ -70,7 +70,8 @@ public class ActivityManager : BasePlayerManager
 
     // 更新数据库
     loginData.TakenRewards[activityId].Add(takeDays);
-    this.Player.Save(); 
+    // 找到报错的那一行，将 this.Player.Save() 替换为：
+    DatabaseHelper.SaveInstance(this.Player.Data);
 
     retcode = 0;
     return items;
