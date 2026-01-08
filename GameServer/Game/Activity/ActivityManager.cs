@@ -43,4 +43,36 @@ public class ActivityManager : BasePlayerManager
 
         return proto;
     }
+    public ItemList TakeLoginReward(uint activityId, uint takeDays, out uint retcode)
+{
+    var items = new ItemList();
+    var loginData = Data.LoginActivityData;
+
+    // 逻辑校验
+    if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
+    {
+        retcode = 2003; // 天数不足
+        return items;
+    }
+
+    if (!loginData.TakenRewards.ContainsKey(activityId))
+        loginData.TakenRewards[activityId] = new List<uint>();
+
+    if (loginData.TakenRewards[activityId].Contains(takeDays))
+    {
+        retcode = 2002; // 已领过
+        return items;
+    }
+
+    // TODO: 这里应该从配置表读取奖励，暂时写死做测试
+    items.ItemList_.Add(new Item { ItemId = 102, Count = 100 }); 
+
+    // 更新数据库
+    loginData.TakenRewards[activityId].Add(takeDays);
+    this.Player.Save(); 
+
+    retcode = 0;
+    return items;
+}
+    
 }
