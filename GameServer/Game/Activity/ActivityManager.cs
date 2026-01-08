@@ -133,7 +133,9 @@ public async Task<(ItemList items, uint panelId, uint retcode)> TakeLoginReward(
     // 5. 保存
     loginData.TakenRewards[activityId].Add(takeDays);
     DatabaseHelper.SaveInstance(this.Player.Data);
-
+    // 修复：获取日志实例并打印，同时消掉 updated 变量未使用的警告
+        var logger = Logger.GetByClassName();
+        logger.Info($"玩家 {Player.Uid} 签到检查完成。是否有天数更新: {updated}");
     return (items, currentPanelId, 0); 
 }
 }
