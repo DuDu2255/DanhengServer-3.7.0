@@ -5,18 +5,19 @@ using EggLink.DanhengServer.GameServer.Server.Packet.Send.Friend;
 using EggLink.DanhengServer.Util; // 添加这一行
 namespace EggLink.DanhengServer.GameServer.Server.Packet.Recv.Friend;
 
+
 [Opcode(CmdIds.GetFriendRecommendLineupCsReq)]
 public class HandlerGetFriendRecommendLineupCsReq : Handler
 {
-   // 在 HandlerGetFriendRecommendLineupCsReq.cs 中
-public override async Task OnHandle(Connection connection, byte[] header, byte[] data)
-{
-    // 直接用响应包的 Parser 解析！
-    var req = GetFriendRecommendLineupScRsp.Parser.ParseFrom(data);
-    Logger.GetByClassName().Info($"收到全服阵容请求, ChallengeId (Key): {req.Key}");
-    // 只要这一步能拿到 Key (也就是 ChallengeId)，后面就全通了
-    var rspData = connection.Player!.FriendManager!.GetGlobalRecommendLineup(req.Key);
-    
-    await connection.SendPacket(new PacketGetFriendRecommendLineupScRsp(rspData));
-}
+    public override async Task OnHandle(Connection connection, byte[] header, byte[] data)
+    {
+        var req = GetFriendRecommendLineupCsReq.Parser.ParseFrom(data);
+        
+        Logger.GetByClassName().Info($"[战报请求] 关卡ID: {req.Key}, Uid: {connection.Player?.Uid}");
+
+        if (connection.Player?.FriendManager == null) return;
+        var rspData = connection.Player.FriendManager.GetGlobalRecommendLineup(req.Key);
+        
+        await connection.SendPacket(new PacketGetFriendRecommendLineupScRsp(rspData));
+    }
 }
