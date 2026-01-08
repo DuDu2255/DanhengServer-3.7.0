@@ -40,10 +40,10 @@ public class ActivityManager : BasePlayerManager
             // 1. 定义指定的签到活动 ID
             uint[] targetCheckInIds = { 1001801, 1002301, 1002801 };
 
-            // 2. 从配置中筛选出“当前时间点”在有效期内的活动
-            var activeSchedules = GameData.ActivityConfig.ScheduleData
-                .Where(s => now >= Convert.ToInt64(s.BeginTime) && now <= Convert.ToInt64(s.EndTime))
-                .ToList();
+            // 优化后直接比较 long 类型
+			var activeSchedules = GameData.ActivityConfig.ScheduleData
+    		.Where(s => now >= s.BeginTime && now <= s.EndTime)
+    		.ToList();
 
             bool updated = false;
             foreach (var schedule in activeSchedules)
