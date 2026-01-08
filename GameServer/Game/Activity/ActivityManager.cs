@@ -44,9 +44,10 @@ public class ActivityManager : BasePlayerManager
             uint[] targetCheckInIds = { 1001801, 1002301, 1002801 };
 
             // 2. 从配置中筛选出“当前时间点”在有效期内的活动
-            var activeSchedules = GameData.ActivityConfig.ScheduleData
-                .Where(s => now >= long.Parse(s.BeginTime) && now <= long.Parse(s.EndTime))
-                .ToList();
+            // 使用 Convert.ToInt64 显式转换字符串
+		var activeSchedules = GameData.ActivityConfig.ScheduleData
+    	.Where(s => now >= Convert.ToInt64(s.BeginTime) && now <= Convert.ToInt64(s.EndTime))
+    	.ToList();
 
             bool updated = false;
             foreach (var schedule in activeSchedules)
@@ -74,7 +75,7 @@ public class ActivityManager : BasePlayerManager
             // 只要发生了数据变动（无论是天数加了，还是时间记录点变了），就同步到数据库
             DatabaseHelper.SaveInstance(this.Player.Data);
             
-            Logger.Info($"玩家 {Player.Uid} 触发签到跨天检查。当前时间: {now}, 状态: {(updated ? "进度已增加" : "当前无活跃的目标签到活动")}");
+            
         }
     }
 
