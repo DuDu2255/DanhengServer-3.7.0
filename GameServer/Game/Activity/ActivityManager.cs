@@ -94,35 +94,49 @@ public class ActivityManager : BasePlayerManager
         return proto;
     }
 
-    public ItemList TakeLoginReward(uint activityId, uint takeDays, out uint retcode)
+   public async Task<ItemList> TakeLoginReward(uint activityId, uint takeDays, out uint retcode)
     {
         var items = new ItemList();
         var loginData = Data.LoginActivityData;
 
-        // 逻辑校验
+        // 1. 校验逻辑 (保持不变)
         if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
         {
-            retcode = 2003; // 天数不足
+            retcode = 2003; 
             return items;
         }
 
+        // 2. 状态校验 (保持不变)
         if (!loginData.TakenRewards.ContainsKey(activityId))
             loginData.TakenRewards[activityId] = new List<uint>();
 
         if (loginData.TakenRewards[activityId].Contains(takeDays))
         {
-            retcode = 2002; // 已领过
+            retcode = 2002; 
             return items;
         }
 
-        // --- 这里可以根据配置发放奖励，目前写死做测试 ---
-        // 修正字段：Num (Proto)
-        items.ItemList_.Add(new Item { ItemId = 102, Num = 100 }); 
+        // 3. 定义奖励序列 (1, 1, 2, 1, 1, 1, 3)
+        uint rewardItemId = 1101; // 星轨专票
+        uint count = takeDays switch
+        {
+            1 => 1, 2 => 1, 3 => 2, 4 => 1, 5 => 1, 6 => 1, 7 => 3,
+            _ => 0
+        };
 
-        // 更新数据库领奖记录
+        // 4. 执行发放 (对接 InventoryManager)
+        if (count > 0 && Player.InventoryManager != null)
+        {
+            // 向协议包添加奖励（用于客户端掉落展示）
+            items.ItemList_.Add(new Item { ItemId = rewardItemId, Num = count });
+
+            // 核心步骤：真正调用 InventoryManager 写入数据库并同步背包
+            // 参数说明：itemId, count, notify (显示左侧掉落提示), sync (同步背包数据)
+            await Player.InventoryManager.AddItem((int)rewardItemId, (int)count, notify: true);
+        }
+
+        // 5. 更新并保存
         loginData.TakenRewards[activityId].Add(takeDays);
-        
-        // 保存玩家全量数据
         DatabaseHelper.SaveInstance(this.Player.Data);
 
         retcode = 0;
