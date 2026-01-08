@@ -1,4 +1,4 @@
-﻿using EggLink.DanhengServer.Data;
+using EggLink.DanhengServer.Data;
 using EggLink.DanhengServer.Database;
 using EggLink.DanhengServer.Database.Avatar;
 using EggLink.DanhengServer.Database.Friend;
@@ -39,6 +39,7 @@ using EggLink.DanhengServer.Proto;
 using EggLink.DanhengServer.Util;
 using static EggLink.DanhengServer.GameServer.Plugin.Event.PluginEvent;
 using OfferingManager = EggLink.DanhengServer.GameServer.Game.Inventory.OfferingManager;
+using EggLink.DanhengServer.GameServer.Server.Packet.Send.Activity;
 
 namespace EggLink.DanhengServer.GameServer.Game.Player;
 
@@ -264,9 +265,9 @@ public partial class PlayerInstance(PlayerData data)
     }
 
     public async ValueTask OnLogin()
-    {   
+    {
         await SendPacket(new PacketStaminaInfoScNotify(this));
-        
+
         ChallengeManager?.ResurrectInstance();
         if (StoryLineManager != null)
             await StoryLineManager.OnLogin();
@@ -319,12 +320,17 @@ public partial class PlayerInstance(PlayerData data)
                     avatarData.CurrentHp = 2000;
             }
         }
-
+        this.ActivityManager?.UpdateLoginDays();
         await LoadScene(Data.PlaneId, Data.FloorId, Data.EntryId, Data.Pos!, Data.Rot!, false);
         if (SceneInstance == null) await EnterScene(2000101, 0, false);
-        // --- 核心修改：放在这里 ---
-        this.ActivityManager?.UpdateLoginDays(); 
-        // ------------------------
+        RogueManager?.GetRogueScore();
+		
+		
+		if (ActivityManager != null)
+    {
+       // 使用 Packet 类进行装箱
+         await SendPacket(new PacketGetLoginActivityScRsp(ActivityManager.GetLoginInfo()));
+    }
         InvokeOnPlayerLogin(this);
     }
 
