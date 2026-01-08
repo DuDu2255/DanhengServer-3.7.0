@@ -15,9 +15,11 @@ public class PacketGetLoginActivityScRsp : BasePacket
             Retcode = 0
         };
 
-        // 填充活动列表逻辑
-        var loginDataList = player.ActivityManager.Data.LoginActivityData.ToProto();
-        rsp.LoginActivityList.AddRange(loginDataList);
+       // 确保 ActivityManager 不为空再调用
+      if (player.ActivityManager != null) {
+       var loginDataList = player.ActivityManager.Data.LoginActivityData.ToProto();
+       rsp.LoginActivityList.AddRange(loginDataList);
+		}
 
         // 设置 BasePacket 的 Data 属性
         this.Data = rsp.ToByteArray();
