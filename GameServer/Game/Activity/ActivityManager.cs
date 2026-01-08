@@ -94,26 +94,34 @@ public class ActivityManager : BasePlayerManager
         return proto;
     }
 
-   public async Task<ItemList> TakeLoginReward(uint activityId, uint takeDays, out uint retcode)
+  /// <summary>
+    /// 领取签到奖励逻辑
+    /// </summary>
+    /// <returns>返回包含奖励列表和面板ID的元组</returns>
+    public async Task<(ItemList items, uint panelId)> TakeLoginReward(uint activityId, uint takeDays, out uint retcode)
     {
         var items = new ItemList();
         var loginData = Data.LoginActivityData;
+        
+        // 查找该活动对应的 PanelId，查不到则默认 10130
+        var schedule = GameData.ActivityConfig.ScheduleData.FirstOrDefault(s => s.ActivityId == activityId);
+        uint currentPanelId = (uint)(schedule?.PanelId ?? 10130);
 
-        // 1. 校验逻辑 (保持不变)
+        // 1. 校验：是否达到签到天数
         if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
         {
-            retcode = 2003; 
-            return items;
+            retcode = 2003; // 天数不足
+            return (items, currentPanelId);
         }
 
-        // 2. 状态校验 (保持不变)
+        // 2. 状态校验：是否已领取
         if (!loginData.TakenRewards.ContainsKey(activityId))
             loginData.TakenRewards[activityId] = new List<uint>();
 
         if (loginData.TakenRewards[activityId].Contains(takeDays))
         {
-            retcode = 2002; 
-            return items;
+            retcode = 2002; // 已领过
+            return (items, currentPanelId);
         }
 
         // 3. 定义奖励序列 (1, 1, 2, 1, 1, 1, 3)
@@ -124,14 +132,13 @@ public class ActivityManager : BasePlayerManager
             _ => 0
         };
 
-        // 4. 执行发放 (对接 InventoryManager)
+        // 4. 执行发放
         if (count > 0 && Player.InventoryManager != null)
         {
-            // 向协议包添加奖励（用于客户端掉落展示）
+            // 添加到返回包
             items.ItemList_.Add(new Item { ItemId = rewardItemId, Num = count });
 
-            // 核心步骤：真正调用 InventoryManager 写入数据库并同步背包
-            // 参数说明：itemId, count, notify (显示左侧掉落提示), sync (同步背包数据)
+            // 真正发放到背包并发送同步包
             await Player.InventoryManager.AddItem((int)rewardItemId, (int)count, notify: true);
         }
 
@@ -140,6 +147,6 @@ public class ActivityManager : BasePlayerManager
         DatabaseHelper.SaveInstance(this.Player.Data);
 
         retcode = 0;
-        return items;
+        return (items, currentPanelId);
     }
 }
