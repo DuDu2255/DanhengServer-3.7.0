@@ -15,10 +15,12 @@ public class HandlerTakeLoginActivityRewardCsReq : Handler
         
         // 2. 逻辑处理：调用 ActivityManager 检查是否能领取，并下发奖励
         // 注意：你需要确保你的 ActivityManager 实现了这个领奖方法
-        var rewardItems = player.ActivityManager.TakeLoginReward(req.Id, req.TakeDays, out uint retcode);
+        // 1. 获取业务逻辑结果
+        var rewardProto = player.ActivityManager.TakeLoginReward(req.Id, req.TakeDays, out uint retcode);
 
-        // 3. 发送 ScRsp 回包
-        // 将 retcode 和 获得的道具传给 Packet 构造函数
-        await connection.SendPacket(new PacketTakeLoginActivityRewardScRsp(req, retcode, rewardItems));
+         // 2. 传入所有 4 个参数：ID, 天数, 状态码, 奖励列表
+        await connection.SendPacket(new PacketTakeLoginActivityRewardScRsp(req.Id, req.TakeDays, retcode, rewardProto));
+
+       
     }
 }
