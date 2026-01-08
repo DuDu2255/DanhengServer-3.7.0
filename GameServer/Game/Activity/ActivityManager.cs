@@ -65,7 +65,8 @@ public class ActivityManager : BasePlayerManager
     }
 
     // TODO: 这里应该从配置表读取奖励，暂时写死做测试
-    items.ItemList_.Add(new Item { ItemId = 102, Count = 100 }); 
+    // 将原本的 Count 改为 Num
+    items.ItemList_.Add(new Item { ItemId = 102, Num = 100 }); 
 
     // 更新数据库
     loginData.TakenRewards[activityId].Add(takeDays);
