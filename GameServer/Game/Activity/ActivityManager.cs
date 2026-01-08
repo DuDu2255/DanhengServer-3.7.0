@@ -93,54 +93,46 @@ public class ActivityManager : BasePlayerManager
 
         return proto;
     }
-/// <summary>
-    /// 领取签到奖励逻辑
-    /// </summary>
-    /// <returns>返回包含奖励列表、面板ID和错误码的元组</returns>
-    public async Task<(ItemList items, uint panelId, uint retcode)> TakeLoginReward(uint activityId, uint takeDays)
+     // ActivityManager.cs 里的方法定义
+public async Task<(ItemList items, uint panelId, uint retcode)> TakeLoginReward(uint activityId, uint takeDays)
+{
+    var items = new ItemList();
+    var loginData = Data.LoginActivityData;
+
+    // 查找当前活动的 PanelId
+    var schedule = GameData.ActivityConfig.ScheduleData.FirstOrDefault(s => s.ActivityId == activityId);
+    uint currentPanelId = (uint)(schedule?.PanelId ?? 10130);
+
+    // 1. 进度检查
+    if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
+        return (items, currentPanelId, 2003);
+
+    // 2. 重复领取检查
+    if (!loginData.TakenRewards.ContainsKey(activityId))
+        loginData.TakenRewards[activityId] = new List<uint>();
+
+    if (loginData.TakenRewards[activityId].Contains(takeDays))
+        return (items, currentPanelId, 2002);
+
+    // 3. 数量序列 (1, 1, 2, 1, 1, 1, 3)
+    uint rewardItemId = 1101; 
+    uint count = takeDays switch
     {
-        var items = new ItemList();
-        var loginData = Data.LoginActivityData;
-        
-        // 查找该活动对应的 PanelId，查不到则默认 10130
-        var schedule = GameData.ActivityConfig.ScheduleData.FirstOrDefault(s => s.ActivityId == activityId);
-        uint currentPanelId = (uint)(schedule?.PanelId ?? 10130);
+        1 => 1, 2 => 1, 3 => 2, 4 => 1, 5 => 1, 6 => 1, 7 => 3,
+        _ => 0
+    };
 
-        // 1. 校验：是否达到签到天数
-        if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
-        {
-            return (items, currentPanelId, 2003); // 天数不足
-        }
-
-        // 2. 状态校验：是否已领取
-        if (!loginData.TakenRewards.ContainsKey(activityId))
-            loginData.TakenRewards[activityId] = new List<uint>();
-
-        if (loginData.TakenRewards[activityId].Contains(takeDays))
-        {
-            return (items, currentPanelId, 2002); // 已领过
-        }
-
-        // 3. 定义奖励序列 (1, 1, 2, 1, 1, 1, 3)
-        uint rewardItemId = 1101; // 星轨专票
-        uint count = takeDays switch
-        {
-            1 => 1, 2 => 1, 3 => 2, 4 => 1, 5 => 1, 6 => 1, 7 => 3,
-            _ => 0
-        };
-
-        // 4. 执行发放
-        if (count > 0 && Player.InventoryManager != null)
-        {
-            items.ItemList_.Add(new Item { ItemId = rewardItemId, Num = count });
-            await Player.InventoryManager.AddItem((int)rewardItemId, (int)count, notify: true);
-        }
-
-        // 5. 更新并保存
-        loginData.TakenRewards[activityId].Add(takeDays);
-        DatabaseHelper.SaveInstance(this.Player.Data);
-
-        return (items, currentPanelId, 0); // 成功
+    // 4. 发放奖励
+    if (count > 0 && Player.InventoryManager != null)
+    {
+        items.ItemList_.Add(new Item { ItemId = rewardItemId, Num = count });
+        await Player.InventoryManager.AddItem((int)rewardItemId, (int)count, notify: true);
     }
-  
+
+    // 5. 保存
+    loginData.TakenRewards[activityId].Add(takeDays);
+    DatabaseHelper.SaveInstance(this.Player.Data);
+
+    return (items, currentPanelId, 0); 
+}
 }
