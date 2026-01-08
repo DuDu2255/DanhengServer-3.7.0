@@ -264,9 +264,10 @@ public partial class PlayerInstance(PlayerData data)
     }
 
     public async ValueTask OnLogin()
-    {
+    {   // --- 关键：在这里添加调用 ---
+        this.ActivityManager?.UpdateLoginDays();
         await SendPacket(new PacketStaminaInfoScNotify(this));
-
+        
         ChallengeManager?.ResurrectInstance();
         if (StoryLineManager != null)
             await StoryLineManager.OnLogin();
