@@ -93,12 +93,11 @@ public class ActivityManager : BasePlayerManager
 
         return proto;
     }
-
-  /// <summary>
+/// <summary>
     /// 领取签到奖励逻辑
     /// </summary>
-    /// <returns>返回包含奖励列表和面板ID的元组</returns>
-    public async Task<(ItemList items, uint panelId)> TakeLoginReward(uint activityId, uint takeDays, out uint retcode)
+    /// <returns>返回包含奖励列表、面板ID和错误码的元组</returns>
+    public async Task<(ItemList items, uint panelId, uint retcode)> TakeLoginReward(uint activityId, uint takeDays)
     {
         var items = new ItemList();
         var loginData = Data.LoginActivityData;
@@ -110,8 +109,7 @@ public class ActivityManager : BasePlayerManager
         // 1. 校验：是否达到签到天数
         if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
         {
-            retcode = 2003; // 天数不足
-            return (items, currentPanelId);
+            return (items, currentPanelId, 2003); // 天数不足
         }
 
         // 2. 状态校验：是否已领取
@@ -120,12 +118,11 @@ public class ActivityManager : BasePlayerManager
 
         if (loginData.TakenRewards[activityId].Contains(takeDays))
         {
-            retcode = 2002; // 已领过
-            return (items, currentPanelId);
+            return (items, currentPanelId, 2002); // 已领过
         }
 
         // 3. 定义奖励序列 (1, 1, 2, 1, 1, 1, 3)
-        uint rewardItemId = 101; // 星轨专票
+        uint rewardItemId = 1101; // 星轨专票
         uint count = takeDays switch
         {
             1 => 1, 2 => 1, 3 => 2, 4 => 1, 5 => 1, 6 => 1, 7 => 3,
@@ -135,10 +132,7 @@ public class ActivityManager : BasePlayerManager
         // 4. 执行发放
         if (count > 0 && Player.InventoryManager != null)
         {
-            // 添加到返回包
             items.ItemList_.Add(new Item { ItemId = rewardItemId, Num = count });
-
-            // 真正发放到背包并发送同步包
             await Player.InventoryManager.AddItem((int)rewardItemId, (int)count, notify: true);
         }
 
@@ -146,7 +140,7 @@ public class ActivityManager : BasePlayerManager
         loginData.TakenRewards[activityId].Add(takeDays);
         DatabaseHelper.SaveInstance(this.Player.Data);
 
-        retcode = 0;
-        return (items, currentPanelId);
+        return (items, currentPanelId, 0); // 成功
     }
+  
 }
