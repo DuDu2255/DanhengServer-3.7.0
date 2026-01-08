@@ -1,9 +1,10 @@
-﻿using EggLink.DanhengServer.Data;
+using EggLink.DanhengServer.Data;
 using EggLink.DanhengServer.Database;
 using EggLink.DanhengServer.Database.Activity;
 using EggLink.DanhengServer.GameServer.Game.Activity.Activities;
 using EggLink.DanhengServer.GameServer.Game.Player;
 using EggLink.DanhengServer.Proto;
+using EggLink.DanhengServer.Util;
 
 namespace EggLink.DanhengServer.GameServer.Game.Activity;
 
@@ -28,6 +29,55 @@ public class ActivityManager : BasePlayerManager
 
     #endregion
 
+    /// <summary>
+    /// 自动更新签到天数：只要跨天（无论时间前进还是倒退）就增加进度
+    /// </summary>
+    public void UpdateLoginDays()
+    {
+        var loginData = Data.LoginActivityData;
+        var now = Extensions.GetUnixSec();
+
+        // 只要当前时间戳和上次记录的时间戳不在同一个游戏天（凌晨4点跨天）
+        if (!UtilTools.IsSameDaily(loginData.LastUpdateTick, now))
+        {
+            // 1. 定义指定的签到活动 ID
+            uint[] targetCheckInIds = { 1001801, 1002301, 1002801 };
+
+            // 2. 从配置中筛选出“当前时间点”在有效期内的活动
+            var activeSchedules = GameData.ActivityConfig.ScheduleData
+                .Where(s => now >= long.Parse(s.BeginTime) && now <= long.Parse(s.EndTime))
+                .ToList();
+
+            bool updated = false;
+            foreach (var schedule in activeSchedules)
+            {
+                // 3. 判断是否为指定的签到 ID
+                if (targetCheckInIds.Contains((uint)schedule.ActivityId))
+                {
+                    uint id = (uint)schedule.ActivityId;
+                    
+                    if (!loginData.LoginDays.ContainsKey(id))
+                    {
+                        loginData.LoginDays[id] = 1; // 初始第一天
+                    }
+                    else if (loginData.LoginDays[id] < 7) // 巡星之礼通常上限 7 天
+                    {
+                        loginData.LoginDays[id]++;
+                    }
+                    updated = true;
+                }
+            }
+
+            // 4. 只要跨天了，就同步最后检查的时间戳，防止同天内重复触发
+            loginData.LastUpdateTick = now;
+            
+            // 只要发生了数据变动（无论是天数加了，还是时间记录点变了），就同步到数据库
+            DatabaseHelper.SaveInstance(this.Player.Data);
+            
+            Logger.Info($"玩家 {Player.Uid} 触发签到跨天检查。当前时间: {now}, 状态: {(updated ? "进度已增加" : "当前无活跃的目标签到活动")}");
+        }
+    }
+
     public List<ActivityScheduleData> ToProto()
     {
         var proto = new List<ActivityScheduleData>();
@@ -43,38 +93,39 @@ public class ActivityManager : BasePlayerManager
 
         return proto;
     }
+
     public ItemList TakeLoginReward(uint activityId, uint takeDays, out uint retcode)
-{
-    var items = new ItemList();
-    var loginData = Data.LoginActivityData;
-
-    // 逻辑校验
-    if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
     {
-        retcode = 2003; // 天数不足
+        var items = new ItemList();
+        var loginData = Data.LoginActivityData;
+
+        // 逻辑校验
+        if (!loginData.LoginDays.ContainsKey(activityId) || takeDays > loginData.LoginDays[activityId])
+        {
+            retcode = 2003; // 天数不足
+            return items;
+        }
+
+        if (!loginData.TakenRewards.ContainsKey(activityId))
+            loginData.TakenRewards[activityId] = new List<uint>();
+
+        if (loginData.TakenRewards[activityId].Contains(takeDays))
+        {
+            retcode = 2002; // 已领过
+            return items;
+        }
+
+        // --- 这里可以根据配置发放奖励，目前写死做测试 ---
+        // 修正字段：Num (Proto)
+        items.ItemList_.Add(new Item { ItemId = 102, Num = 100 }); 
+
+        // 更新数据库领奖记录
+        loginData.TakenRewards[activityId].Add(takeDays);
+        
+        // 保存玩家全量数据
+        DatabaseHelper.SaveInstance(this.Player.Data);
+
+        retcode = 0;
         return items;
     }
-
-    if (!loginData.TakenRewards.ContainsKey(activityId))
-        loginData.TakenRewards[activityId] = new List<uint>();
-
-    if (loginData.TakenRewards[activityId].Contains(takeDays))
-    {
-        retcode = 2002; // 已领过
-        return items;
-    }
-
-    // TODO: 这里应该从配置表读取奖励，暂时写死做测试
-    // 将原本的 Count 改为 Num
-    items.ItemList_.Add(new Item { ItemId = 102, Num = 100 }); 
-
-    // 更新数据库
-    loginData.TakenRewards[activityId].Add(takeDays);
-    // 找到报错的那一行，将 this.Player.Save() 替换为：
-    DatabaseHelper.SaveInstance(this.Player.Data);
-
-    retcode = 0;
-    return items;
-}
-    
 }
