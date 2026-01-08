@@ -358,62 +358,79 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
     {
         Key = challengeId,
         Retcode = 0,
-        Type = (DLLLEANDAIH)2 // 2 通常代表全服推荐
+        Type = (DLLLEANDAIH)2 // 2 代表全服推荐
     };
 
-    // 从数据库获取所有好友战报记录
     var allRecords = DatabaseHelper.sqlSugarScope?.Queryable<FriendRecordData>().ToList() ?? new();
 
     foreach (var record in allRecords)
     {
-        // 在所有 ChallengeGroupStatistics 字典中寻找包含该关卡 ID 的统计数据
-        // 因为 challengeId 可能在 Memory(忘却), Story(虚构), 或 Boss(末日) 中
-        ChallengeAvatarInfoPb[]? foundLineup = null;
-        
-        // 查找忘却之庭 (Memory)
-        var memoryStats = record.ChallengeGroupStatistics.Values
-            .SelectMany(g => g.MemoryGroupStatistics?.Values ?? Enumerable.Empty<MemoryGroupStatisticsPb>())
-            .FirstOrDefault(m => m.Level == challengeId);
+        var pData = PlayerData.GetPlayerByUid(record.Uid);
+        if (pData == null) continue;
 
-        if (memoryStats != null)
+        var entry = new KEHMGKIHEFN
         {
-            var pData = PlayerData.GetPlayerByUid(record.Uid);
-            if (pData == null) continue;
+            PlayerInfo = pData.ToSimpleProto(FriendOnlineStatus.Offline)
+        };
 
-            // 构建 3.7.0 混淆的战报容器 (DKHENLMAEBE)
-            var lineupContainer = new DKHENLMAEBE();
-            
-            // 遍历 memoryStats 里的双阵容 (Lineups 是 List<List<...>>)
-            foreach (var side in memoryStats.Lineups)
+        bool foundData = false;
+
+        foreach (var groupStat in record.ChallengeGroupStatistics.Values)
+        {
+            // 1. 处理忘却之庭 (Memory) -> 映射至 Tag 1: PMHIBHNEPHI
+            if (groupStat.MemoryGroupStatistics != null && 
+                groupStat.MemoryGroupStatistics.TryGetValue(challengeId, out var memoryStats))
             {
-                var sideProto = new GIIHBKMJKHM { PeakLevelId = challengeId };
-                foreach (var avatar in side)
-                {
-                    sideProto.AvatarList.Add(new OILPIACENNH
-                    {
-                        Id = avatar.Id,
-                        Level = avatar.Level,
-                        AvatarType = avatar.AvatarType,
-                        Index = avatar.Index
-                    });
-                }
-                lineupContainer.HFPPEGIFFLM.Add(sideProto);
+                entry.PMHIBHNEPHI = BuildMemoryContainer(memoryStats, challengeId);
+                foundData = true;
+                break;
             }
 
-            // 组装最终条目
-            var entry = new KEHMGKIHEFN
+            // 2. 处理虚构叙事 (Story) -> 映射至 Tag 2: JILKKAJBLJK
+            if (groupStat.StoryGroupStatistics != null && 
+                groupStat.StoryGroupStatistics.TryGetValue(challengeId, out var storyStats))
             {
-                PlayerInfo = pData.ToSimpleProto(FriendOnlineStatus.Offline),
-                PMHIBHNEPHI = lineupContainer // 忘却之庭对应字段
-            };
-
-            rsp.ChallengeRecommendList.Add(entry);
+                entry.JILKKAJBLJK = BuildStoryContainer(storyStats);
+                foundData = true;
+                break;
+            }
         }
 
-        if (rsp.ChallengeRecommendList.Count >= 20) break;
+        if (foundData) rsp.ChallengeRecommendList.Add(entry);
+        if (rsp.ChallengeRecommendList.Count >= 15) break;
     }
 
     return rsp;
+
+    // --- 局部函数：处理忘却之庭 (双队伍结构) ---
+    DKHENLMAEBE BuildMemoryContainer(MemoryGroupStatisticsPb stats, uint cid)
+    {
+        var container = new DKHENLMAEBE();
+        foreach (var team in stats.Lineups)
+        {
+            var sideProto = new GIIHBKMJKHM { PeakLevelId = cid };
+            foreach (var avatar in team)
+            {
+                sideProto.AvatarList.Add(new OILPIACENNH { Id = avatar.Id, Level = avatar.Level, AvatarType = avatar.AvatarType, Index = avatar.Index });
+            }
+            container.HFPPEGIFFLM.Add(sideProto);
+        }
+        return container;
+    }
+
+    // --- 局部函数：处理虚构叙事 (扁平化结构) ---
+    IIGJFPMIGKF BuildStoryContainer(StoryGroupStatisticsPb stats)
+    {
+        var container = new IIGJFPMIGKF { BuffId = stats.BuffOne, IsHard = stats.Stars >= 3 };
+        foreach (var team in stats.Lineups)
+        {
+            foreach (var avatar in team)
+            {
+                container.AvatarList.Add(new OILPIACENNH { Id = avatar.Id, Level = avatar.Level, AvatarType = avatar.AvatarType, Index = avatar.Index });
+            }
+        }
+        return container;
+    }
 }
     public GetFriendListInfoScRsp ToProto()
     {
