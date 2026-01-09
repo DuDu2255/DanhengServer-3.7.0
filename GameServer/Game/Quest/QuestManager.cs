@@ -72,7 +72,7 @@ public class QuestManager(PlayerInstance player) : BasePlayerManager(player)
     // 5. 转换 5 个任务条目
     foreach (var info in dbData.TodayQuests.Values)
     {
-        rsp.IHOELLGBBKN.Add(info.ToProto((uint)Player.WorldLevel));
+        rsp.IHOELLGBBKN.Add(info.ToProto((uint)Player.Data.WorldLevel));
     }
 
     return rsp;
