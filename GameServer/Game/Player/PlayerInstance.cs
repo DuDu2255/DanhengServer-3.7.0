@@ -67,7 +67,7 @@ public partial class PlayerInstance(PlayerData data)
     #endregion
 
     #region Quest & Mission Managers
-
+    public DailyActiveManager? DailyActiveManager { get; set; } // [新增] 日常任务管理器
     public MissionManager? MissionManager { get; private set; }
     public QuestManager? QuestManager { get; private set; }
     public RaidManager? RaidManager { get; private set; }
@@ -193,6 +193,8 @@ public partial class PlayerInstance(PlayerData data)
         RaidManager = new RaidManager(this);
         StoryLineManager = new StoryLineManager(this);
         QuestManager = new QuestManager(this);
+		// [新增] 初始化日常任务管理器
+        DailyActiveManager = new DailyActiveManager(this);
         TrainPartyManager = new TrainPartyManager(this);
         GridFightManager = new GridFightManager(this);
         OfferingManager = new OfferingManager(this);
