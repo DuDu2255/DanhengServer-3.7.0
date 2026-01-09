@@ -35,7 +35,7 @@ public class QuestManager(PlayerInstance player) : BasePlayerManager(player)
     }
 
     #endregion
-
+  
     #region Actions
 
     public async ValueTask AcceptQuestByCondition()

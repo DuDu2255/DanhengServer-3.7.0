@@ -290,7 +290,8 @@ public static class GameData
     #endregion
 
     #region Mission
-
+    // 在 GameData.cs 的 #region Mission 部分添加
+    public static Dictionary<int, DailyQuestConfigExcel> DailyQuestConfigData { get; private set; } = [];
     public static Dictionary<int, MainMissionExcel> MainMissionData { get; private set; } = [];
     public static Dictionary<int, SubMissionExcel> SubMissionData { get; private set; } = [];
     public static ConcurrentDictionary<int, SubMissionData> SubMissionInfoData { get; private set; } = [];

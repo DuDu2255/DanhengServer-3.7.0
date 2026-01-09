@@ -1,4 +1,4 @@
-﻿using EggLink.DanhengServer.Data;
+using EggLink.DanhengServer.Data;
 using EggLink.DanhengServer.Database;
 using EggLink.DanhengServer.Database.Avatar;
 using EggLink.DanhengServer.Database.Friend;
@@ -39,6 +39,7 @@ using EggLink.DanhengServer.Proto;
 using EggLink.DanhengServer.Util;
 using static EggLink.DanhengServer.GameServer.Plugin.Event.PluginEvent;
 using OfferingManager = EggLink.DanhengServer.GameServer.Game.Inventory.OfferingManager;
+using EggLink.DanhengServer.GameServer.Server.Packet.Send.Activity;
 
 namespace EggLink.DanhengServer.GameServer.Game.Player;
 
@@ -66,7 +67,7 @@ public partial class PlayerInstance(PlayerData data)
     #endregion
 
     #region Quest & Mission Managers
-
+    public DailyActiveManager? DailyActiveManager { get; set; } // [新增] 日常任务管理器
     public MissionManager? MissionManager { get; private set; }
     public QuestManager? QuestManager { get; private set; }
     public RaidManager? RaidManager { get; private set; }
@@ -192,6 +193,8 @@ public partial class PlayerInstance(PlayerData data)
         RaidManager = new RaidManager(this);
         StoryLineManager = new StoryLineManager(this);
         QuestManager = new QuestManager(this);
+		// [新增] 初始化日常任务管理器
+        DailyActiveManager = new DailyActiveManager(this);
         TrainPartyManager = new TrainPartyManager(this);
         GridFightManager = new GridFightManager(this);
         OfferingManager = new OfferingManager(this);
@@ -264,9 +267,9 @@ public partial class PlayerInstance(PlayerData data)
     }
 
     public async ValueTask OnLogin()
-    {   
+    {
         await SendPacket(new PacketStaminaInfoScNotify(this));
-        
+
         ChallengeManager?.ResurrectInstance();
         if (StoryLineManager != null)
             await StoryLineManager.OnLogin();
@@ -319,12 +322,27 @@ public partial class PlayerInstance(PlayerData data)
                     avatarData.CurrentHp = 2000;
             }
         }
-
+        this.ActivityManager?.UpdateLoginDays();
         await LoadScene(Data.PlaneId, Data.FloorId, Data.EntryId, Data.Pos!, Data.Rot!, false);
         if (SceneInstance == null) await EnterScene(2000101, 0, false);
-        // --- 核心修改：放在这里 ---
-        this.ActivityManager?.UpdateLoginDays(); 
-        // ------------------------
+        RogueManager?.GetRogueScore();
+		
+		
+		if (ActivityManager != null)
+    {
+       // 使用 Packet 类进行装箱
+         await SendPacket(new PacketGetLoginActivityScRsp(ActivityManager.GetLoginInfo()));
+    }
+		if (DailyActiveManager != null)
+        {
+            // 1. 触发检查：确保登录时就完成跨天重置或初始化
+            // 这样玩家如果跨过凌晨4点登录，任务会立刻刷新
+            var dailyInfo = DailyActiveManager.GetDailyActiveInfo();
+
+            // 2. 主动推送 3327 通知包 (DailyActiveInfoNotify)
+            // 这样客户端进度条会立刻显示正确的分数
+            await DailyActiveManager.SyncDailyActiveNotify();
+        }
         InvokeOnPlayerLogin(this);
     }
 

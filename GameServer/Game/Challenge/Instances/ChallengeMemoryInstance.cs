@@ -164,12 +164,17 @@ public class ChallengeMemoryInstance(PlayerInstance player, ChallengeDataPb data
     {
         if (Data.Memory.CurrentStage >= Config.StageNum)
         {
-            // Last stage
-            Data.Memory.CurStatus = (int)ChallengeStatus.ChallengeFinish;
-            Data.Memory.Stars = CalculateStars();
+            // 1. 计算最终消耗轮数
+        uint consumedRounds = (uint)(Config.ChallengeCountDown - Data.Memory.RoundsLeft);
+        
+        Data.Memory.CurStatus = (int)ChallengeStatus.ChallengeFinish;
+        Data.Memory.Stars = CalculateStars();
 
-            // Save history
-            Player.ChallengeManager!.AddHistory((int)Data.Memory.ChallengeMazeId, (int)Data.Memory.Stars, 0);
+        // 2. 修正：将消耗轮数存入历史记录 (不要传0)
+        Player.ChallengeManager!.AddHistory((int)Data.Memory.ChallengeMazeId, (int)Data.Memory.Stars, (int)consumedRounds);
+
+        // 3. 构造战报并保存 (确保内部处理了 RoundCount)
+        Player.ChallengeManager.SaveBattleRecord(this);
 
             // Send challenge result data
             await Player.SendPacket(new PacketChallengeSettleNotify(this));
