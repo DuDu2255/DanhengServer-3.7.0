@@ -34,33 +34,53 @@ public class DailyActiveManager(PlayerInstance player) : BasePlayerManager(playe
         return rsp;
     }
 
-    private void CheckAndResetDaily()
+   private void CheckAndResetDaily()
+{
+    long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+    // 使用你写的 UtilTools 进行跨天判定
+    // 如果数据库里的上次刷新时间 Data.LastRefreshTime 和现在不是同一天，则重置
+    if (!UtilTools.IsSameDaily(Data.LastRefreshTime, now) || Data.TodayQuests.Count == 0)
     {
-        uint currentDay = (uint)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 86400);
+        Log.Info($"[日常实训] 触发跨天更新。上一次刷新时间: {Data.LastRefreshTime}, 当前时间: {now}");
 
-        if (Data.LastRefreshDay != currentDay || Data.TodayQuests.Count == 0)
+        // 1. 清理旧数据
+        Data.DailyActivePoint = 0;
+        Data.TakenRewardList.Clear();
+        Data.TodayQuests.Clear();
+
+        // 2. 动态筛选任务池
+        var availablePool = GameData.DailyQuestConfigData.Values
+            .Where(x => !x.IsDelete && 
+                        Player.Data.Level >= x.MinLevel && 
+                        Player.Data.Level <= x.MaxLevel)
+            .ToList();
+
+        if (availablePool.Count > 0)
         {
-            Log.Info($"[日常实训] 玩家 {Player.Uid} 触发跨天重置或初始化。"); // 现在没问题了
+            // 3. 随机抽取 5 组任务
+            var random = new Random();
+            var selectedGroups = availablePool.OrderBy(x => random.Next()).Take(5).ToList();
 
-            Data.DailyActivePoint = 0;
-            Data.TakenRewardList.Clear();
-            Data.TodayQuests.Clear();
-
-            uint[] hardcodedIds = { 2100003, 2100131, 2100105, 2100101, 2100102 };
-            foreach (var id in hardcodedIds)
+            foreach (var group in selectedGroups)
             {
-                Data.TodayQuests[id] = new DailyQuestInfo 
-                { 
-                    QuestId = id, 
-                    Progress = 0, 
-                    IsFinished = false 
-                };
+                foreach (var qId in group.QuestList)
+                {
+                    Data.TodayQuests[(uint)qId] = new DailyQuestInfo 
+                    { 
+                        QuestId = (uint)qId, 
+                        Progress = 0, 
+                        IsFinished = false 
+                    };
+                }
             }
-
-            Data.LastRefreshDay = currentDay;
-            DatabaseHelper.ToSaveUidList.Add(Player.Uid);
         }
+
+        // 4. 更新刷新时间并保存 UID
+        Data.LastRefreshTime = now; // 注意：你数据库字段名建议改为 LastRefreshTime
+        DatabaseHelper.ToSaveUidList.Add(Player.Uid);
     }
+}
 
     public async ValueTask SyncDailyQuestsStatus()
     {
