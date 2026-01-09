@@ -2,7 +2,8 @@ using EggLink.DanhengServer.Util;
 
 namespace EggLink.DanhengServer.Data.Excel;
 
-[ResourceEntity("DailyQuest.json")] // 对应你提供的 JSON 文件名
+// 服务器会自动通过反射找到这个类并加载对应的 JSON
+[ResourceEntity("DailyQuest.json")] 
 public class DailyQuestConfigExcel : ExcelResource
 {
     public int DailyID { get; set; }
@@ -15,7 +16,7 @@ public class DailyQuestConfigExcel : ExcelResource
 
     public override void Loaded()
     {
-        // 将数据加载到 GameData 的新字典中
+        // 核心：加载时自动注入 GameData
         GameData.DailyQuestConfigData.TryAdd(DailyID, this);
     }
 }
