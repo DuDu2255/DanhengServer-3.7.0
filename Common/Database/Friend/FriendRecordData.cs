@@ -245,7 +245,7 @@ public class ChallengeAvatarInfoPb
     public uint Index { get; set; }
     public uint Id { get; set; }
     public AvatarType AvatarType { get; set; } = AvatarType.AvatarFormalType;
-    public uint Rank { get; set; } // <--- 添加这一行
+    public uint Rank { get; set;} // <--- 添加这一行
 
     public ChallengeAvatarInfo ToProto()
     {
@@ -254,7 +254,7 @@ public class ChallengeAvatarInfoPb
             Level = Level,
             AvatarType = AvatarType,
             Id = Id,
-            Index = Index
+            Index = Index,
             GGDIIBCDOBB = Rank // 对应星魂
         };
     }
