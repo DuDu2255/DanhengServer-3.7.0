@@ -353,7 +353,7 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
         friend.IsMark = isMark;
     }
  public GetFriendRecommendLineupScRsp GetGlobalRecommendLineup(uint challengeId)
-{
+{   var Log = Logger.GetByClassName(); // 动态获取
     // LOG 模式：开始解析
     Log.Info($"[LOG-DEBUG] === 战报请求开始 ===");
     Log.Info($"[LOG-DEBUG] 客户端请求 Key: {challengeId} | 当前玩家 UID: {Player.Uid}");
