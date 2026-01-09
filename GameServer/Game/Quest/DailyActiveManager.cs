@@ -4,7 +4,7 @@ using EggLink.DanhengServer.GameServer.Game.Player;
 using EggLink.DanhengServer.GameServer.Server.Packet.Send.PlayerSync; 
 using EggLink.DanhengServer.Proto;
 using EggLink.DanhengServer.Util; 
-
+using EggLink.DanhengServer.Data; // 添加这一行来修复 GameData 找不到的问题
 namespace EggLink.DanhengServer.GameServer.Game.Quest;
 
 public class DailyActiveManager(PlayerInstance player) : BasePlayerManager(player)
