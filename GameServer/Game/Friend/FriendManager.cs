@@ -458,27 +458,30 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
     
     return rsp;
 }
-private DKHENLMAEBE BuildMemoryContainer(MemoryStatisticsPb stats, uint cid)
+  private DKHENLMAEBE BuildMemoryContainer(MemoryGroupStatisticsPb stats, uint cid)
 {
     var container = new DKHENLMAEBE();
+    
+    // stats.Lineups 是 List<List<ChallengeAvatarInfoPb>>
     foreach (var team in stats.Lineups)
     {
         var sideProto = new GIIHBKMJKHM { PeakLevelId = cid };
-        foreach (var avatar in team)
+        
+        foreach (var avPb in team)
         {
             sideProto.AvatarList.Add(new OILPIACENNH
             {
-                Id = (uint)avatar.Id,
-                Level = (uint)avatar.Level,
-                AvatarType = (AvatarType)avatar.AvatarType,
-                Index = (uint)avatar.Index
+                AvatarType = avPb.AvatarType,
+                Id = avPb.Id,
+                Level = avPb.Level,
+                Index = avPb.Index,
+                GGDIIBCDOBB = avPb.Rank // 刚才已经在 FriendRecordData 里补全了 Rank 属性
             });
         }
         container.HFPPEGIFFLM.Add(sideProto);
     }
     return container;
 }
-  
     public GetFriendListInfoScRsp ToProto()
     {
         var proto = new GetFriendListInfoScRsp();
