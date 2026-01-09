@@ -15,7 +15,7 @@ public class HttpServerConfig
 {
     public string BindAddress { get; set; } = "0.0.0.0";
     public string PublicAddress { get; set; } = "127.0.0.1";
-    public int Port { get; set; } = 443;
+    public int Port { get; set; } = 23300;
     public bool UseSSL { get; set; } = false;
     public bool UseFetchRemoteHotfix { get; set; } = false;
 
@@ -79,7 +79,7 @@ public class ServerOption
     public bool EnableMission { get; set; } = true; // experimental
     public bool EnableQuest { get; set; } = true; // experimental
     public bool AutoLightSection { get; set; } = true;
-    public string Language { get; set; } = "EN";
+    public string Language { get; set; } = "CHS";
     public string FallbackLanguage { get; set; } = "EN";
     public HashSet<string> DefaultPermissions { get; set; } = ["*"];
     public ServerAnnounce ServerAnnounce { get; set; } = new();
