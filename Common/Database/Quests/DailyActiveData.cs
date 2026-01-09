@@ -8,8 +8,8 @@ public class DailyActiveData : BaseDatabaseDataHelper
 {
     // Uid 已经由基类 BaseDatabaseDataHelper 提供，并自动作为主键
     
-    // 核心：记录上次刷新时间（Unix天数戳），用于判定跨天重置
-    public uint LastRefreshDay { get; set; } = 0;
+    // 修改这里：存 Unix 时间戳（秒），方便直接传给 UtilTools
+    public long LastRefreshTime { get; set; } = 0;
 
     // 当前活跃度总分 (0-500)
     public uint DailyActivePoint { get; set; } = 0;
