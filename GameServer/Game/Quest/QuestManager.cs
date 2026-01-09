@@ -35,7 +35,69 @@ public class QuestManager(PlayerInstance player) : BasePlayerManager(player)
     }
 
     #endregion
+    public GetDailyActiveInfoScRsp GetDailyActiveInfo()
+{
+    // 1. 获取（或创建）数据库中的日常数据
+    var dbData = DatabaseHelper.Instance!.GetInstanceOrCreateNew<DailyActiveData>(Player.Uid);
+    
+    // 2. 如果是第一次加载，初始化硬编码 ID
+    if (dbData.TodayQuests.Count == 0)
+    {
+        uint[] hardcodedIds = { 2100003, 2100131, 2100105, 2100101, 2100102 };
+        foreach (var id in hardcodedIds)
+        {
+            dbData.TodayQuests[id] = new DailyQuestInfo 
+            { 
+                QuestId = id, 
+                Progress = 0, 
+                IsFinished = false 
+            };
+        }
+        dbData.DailyActivePoint = 200; // 硬编码：进度条先给 200 分
+        
+        // 记得标记存盘
+        DatabaseHelper.ToSaveUidList.Add(Player.Uid);
+    }
 
+    // 3. 构造返回协议
+    var rsp = new GetDailyActiveInfoScRsp
+    {
+        Retcode = 0,
+        IIMJCLBOPNC = dbData.DailyActivePoint, // 8号字段: 活跃度总分
+    };
+
+    // 4. 填充已领取的奖励（暂时留空，或根据 dbData.TakenRewardList 填充）
+    rsp.MBIBABKIANF.AddRange(dbData.TakenRewardList);
+
+    // 5. 转换 5 个任务条目
+    foreach (var info in dbData.TodayQuests.Values)
+    {
+        rsp.IHOELLGBBKN.Add(info.ToProto((uint)Player.WorldLevel));
+    }
+
+    return rsp;
+}
+    public async ValueTask ForceSyncDailyQuests()
+{
+    var dbData = DatabaseHelper.Instance!.GetInstanceOrCreateNew<DailyActiveData>(Player.Uid);
+    var syncList = new List<QuestInfo>();
+
+    foreach (var qId in dbData.TodayQuests.Keys)
+    {
+        // 构造任务同步信息
+        // 注意：这里的 QuestInfo 是你数据库里定义的那个类
+        syncList.Add(new QuestInfo
+        {
+            QuestId = (int)qId,
+            QuestStatus = QuestStatus.QuestDoing, // 关键：设为正在进行
+            Progress = 0
+        });
+    }
+
+    // 调用你现有的 PacketPlayerSyncScNotify 发送同步包
+    // 如果你没有这个 Packet 类，需要模仿 BasePacket 写一个
+    await Player.SendPacket(new PacketPlayerSyncScNotify(syncList));
+}
     #region Actions
 
     public async ValueTask AcceptQuestByCondition()
