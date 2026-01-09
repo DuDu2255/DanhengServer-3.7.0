@@ -1,4 +1,5 @@
 ﻿using EggLink.DanhengServer.Database;
+using EggLink.DanhengServer.Data; // 必须有这一行，才能找到 GameData
 using EggLink.DanhengServer.Database.Friend;
 using EggLink.DanhengServer.Database.Player;
 using EggLink.DanhengServer.GameServer.Command;
