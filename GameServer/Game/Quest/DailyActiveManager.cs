@@ -14,7 +14,19 @@ public class DailyActiveManager(PlayerInstance player) : BasePlayerManager(playe
 
     public DailyActiveData Data => 
         DatabaseHelper.Instance!.GetInstanceOrCreateNew<DailyActiveData>(Player.Uid);
-
+    /// <summary>
+/// 主动同步当前的活跃度分数给客户端 (CmdId: 3327)
+/// </summary>
+public async ValueTask SyncDailyActiveNotify()
+{
+    var notify = new DailyActiveInfoNotify
+    {
+        IIMJCLBOPNC = Data.DailyActivePoint // 对应协议中的分数进度字段
+    };
+    
+    // 这里需要确保你已经写了 PacketDailyActiveInfoNotify 类
+    await Player.SendPacket(new PacketDailyActiveInfoNotify(notify));
+}
     public GetDailyActiveInfoScRsp GetDailyActiveInfo()
     {
         var dbData = Data;
