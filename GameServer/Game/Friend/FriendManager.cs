@@ -458,7 +458,26 @@ public class FriendManager(PlayerInstance player) : BasePlayerManager(player)
     
     return rsp;
 }
-
+private DKHENLMAEBE BuildMemoryContainer(MemoryStatisticsPb stats, uint cid)
+{
+    var container = new DKHENLMAEBE();
+    foreach (var team in stats.Lineups)
+    {
+        var sideProto = new GIIHBKMJKHM { PeakLevelId = cid };
+        foreach (var avatar in team)
+        {
+            sideProto.AvatarList.Add(new OILPIACENNH
+            {
+                Id = (uint)avatar.Id,
+                Level = (uint)avatar.Level,
+                AvatarType = (AvatarType)avatar.AvatarType,
+                Index = (uint)avatar.Index
+            });
+        }
+        container.HFPPEGIFFLM.Add(sideProto);
+    }
+    return container;
+}
   
     public GetFriendListInfoScRsp ToProto()
     {
