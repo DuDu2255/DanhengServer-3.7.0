@@ -333,6 +333,16 @@ public partial class PlayerInstance(PlayerData data)
        // 使用 Packet 类进行装箱
          await SendPacket(new PacketGetLoginActivityScRsp(ActivityManager.GetLoginInfo()));
     }
+		if (DailyActiveManager != null)
+        {
+            // 1. 触发检查：确保登录时就完成跨天重置或初始化
+            // 这样玩家如果跨过凌晨4点登录，任务会立刻刷新
+            var dailyInfo = DailyActiveManager.GetDailyActiveInfo();
+
+            // 2. 主动推送 3327 通知包 (DailyActiveInfoNotify)
+            // 这样客户端进度条会立刻显示正确的分数
+            await DailyActiveManager.SyncDailyActiveNotify();
+        }
         InvokeOnPlayerLogin(this);
     }
 
