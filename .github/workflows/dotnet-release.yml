@@ -82,7 +82,7 @@ jobs:
         body_path: z/body.txt
         name: ${{ inputs.name }}
         tag_name: Release-${{ github.sha }}
-        repository: EggLinks/DanhengServer-Public
+        repository: mikugirls/DanhengServer-3.7.0
         # note you'll typically need to create a personal access token
         # with permissions to create releases in the other repo
         token: ${{ secrets.GITHUB_TOKEN }}
