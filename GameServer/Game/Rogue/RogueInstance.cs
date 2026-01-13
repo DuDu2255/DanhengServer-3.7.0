@@ -224,7 +224,7 @@ public class RogueInstance : BaseRogueInstance
     }
     }
 
-    public override async ValueTask OnBattleEnd(BattleInstance battle, PVEBattleResultCsReq req)
+   public override async ValueTask OnBattleEnd(BattleInstance battle, PVEBattleResultCsReq req)
     {
         foreach (var miracle in RogueMiracles.Values) miracle.OnEndBattle(battle);
 
