@@ -2,7 +2,7 @@ using EggLink.DanhengServer.Data;
 using EggLink.DanhengServer.Database.Activity;
 using EggLink.DanhengServer.GameServer.Server.Packet.Send.Activity;
 using EggLink.DanhengServer.Proto;
-
+using EggLink.DanhengServer.Util;
 namespace EggLink.DanhengServer.GameServer.Game.Activity.Activities;
 
 public class TrialActivityInstance : BaseActivityInstance
