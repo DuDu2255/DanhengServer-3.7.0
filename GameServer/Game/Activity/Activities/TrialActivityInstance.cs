@@ -34,47 +34,45 @@ public class TrialActivityInstance : BaseActivityInstance
 
         await player.SendPacket(new PacketStartTrialActivityScRsp((uint)stageId));
     }
+public async ValueTask EndActivity(TrialActivityStatus status = TrialActivityStatus.None)
+{
+    var player = ActivityManager.Player!;
 
-    public async ValueTask EndActivity(TrialActivityStatus status = TrialActivityStatus.None)
+    await player.LineupManager!.DestroyExtraLineup(ExtraLineupType.LineupStageTrial);
+    player.LineupManager!.LineupData.CurExtraLineup = -1;
+
+    // --- 修复警告：确保 pos 和 rot 不为 null ---
+    if (player.Data.PlaneId != 0 && player.Data.PlaneId != player.SceneInstance?.PlaneId)
     {
-        var player = ActivityManager.Player!;
+        // 如果 Data 里的位置信息丢失，则提供一个 new Position() 作为后备
+        var safePos = player.Data.Pos ?? new Position();
+        var safeRot = player.Data.Rot ?? new Position();
 
-        // 1. 移除试用阵容，回滚到正常队伍
-        await player.LineupManager!.DestroyExtraLineup(ExtraLineupType.LineupStageTrial);
-        player.LineupManager!.LineupData.CurExtraLineup = -1;
-
-        // 2. --- 修复传送 BUG：原地返回 ---
-        // 如果玩家 Data 中记录的场景不是当前试用场景，则尝试原地 LoadScene
-        // 否则兜底回星穹列车 (2000101)
-        if (player.Data.PlaneId != 0 && player.Data.PlaneId != player.SceneInstance?.PlaneId)
-        {
-            await player.LoadScene(player.Data.PlaneId, player.Data.FloorId, player.Data.EntryId, player.Data.Pos, player.Data.Rot, true);
-        }
-        else
-        {
-            await player.EnterScene(2000101, 0, true);
-        }
-
-        // 3. 处理结算逻辑
-        if (status == TrialActivityStatus.Finish)
-        {
-            // 防重复添加
-            if (Data.Activities.All(x => x.StageId != Data.CurTrialStageId))
-            {
-                Data.Activities.Add(new TrialActivityResultData
-                {
-                    StageId = Data.CurTrialStageId
-                });
-            }
-
-            // 发送完成通知弹出 UI
-            await player.SendPacket(new PacketCurTrialActivityScNotify((uint)Data.CurTrialStageId, status));
-            
-            // --- 核心修复：立即同步全量数据，解决重登领奖 BUG ---
-            await player.SendPacket(new PacketGetTrialActivityDataScRsp(player));
-        }
-
-        // 4. 重置状态
-        Data.CurTrialStageId = 0;
+        await player.LoadScene(
+            player.Data.PlaneId, 
+            player.Data.FloorId, 
+            player.Data.EntryId, 
+            safePos, 
+            safeRot, 
+            true
+        );
     }
+    else
+    {
+        await player.EnterScene(2000101, 0, true);
+    }
+
+    if (status == TrialActivityStatus.Finish)
+    {
+        if (Data.Activities.All(x => x.StageId != Data.CurTrialStageId))
+        {
+            Data.Activities.Add(new TrialActivityResultData { StageId = Data.CurTrialStageId });
+        }
+        await player.SendPacket(new PacketCurTrialActivityScNotify((uint)Data.CurTrialStageId, status));
+        await player.SendPacket(new PacketGetTrialActivityDataScRsp(player));
+    }
+
+    Data.CurTrialStageId = 0;
+}
+  
 }
