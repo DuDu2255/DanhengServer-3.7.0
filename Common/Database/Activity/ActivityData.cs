@@ -1,6 +1,6 @@
 ﻿using EggLink.DanhengServer.Proto;
 using SqlSugar;
-
+using EggLink.DanhengServer.Util; // 确保 Common 项目能找到 Position 类
 namespace EggLink.DanhengServer.Database.Activity;
 
 [SugarTable("Activity")]
