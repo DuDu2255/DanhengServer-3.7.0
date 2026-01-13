@@ -207,12 +207,21 @@ public class RogueInstance : BaseRogueInstance
     {
         base.OnBattleStart(battle);
 
-        GameData.RogueMapData.TryGetValue(AreaExcel.MapId, out var mapData);
-        if (mapData != null)
+       // --- 动态替换怪物 ID ---
+    if (CurRoom?.Excel != null)
+    {
+        // 从房间配置拿到 StageID
+        if (CurRoom.Excel.GroupWithContent.TryGetValue(CurRoom.Excel.GroupID, out int stageId))
         {
-            mapData.TryGetValue(CurRoom!.SiteId, out var mapInfo);
-            if (mapInfo != null && mapInfo.LevelList.Count > 0) battle.CustomLevel = mapInfo.LevelList.RandomElement();
+            // 从 StageConfigExcel 加载出的数据中提取波次
+            if (GameData.StageConfigData.TryGetValue(stageId, out var stageConfig))
+            {
+                battle.MonsterWaves = stageConfig.ToProto(); // 注入真实 BOSS
+                battle.StageId = (uint)stageId;
+                battle.WorldLevel = AreaExcel.RecommendLevel; // 修正推荐等级
+            }
         }
+    }
     }
 
     public override async ValueTask OnBattleEnd(BattleInstance battle, PVEBattleResultCsReq req)
