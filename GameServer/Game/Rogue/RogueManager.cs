@@ -206,7 +206,14 @@ public RogueAreaStatus GetAreaStatus(int areaId)
     {
         return new RogueGetVirtualItemInfo
         {
-            // TODO: Implement
+            // 1. 填入沉浸器数量 (假设 ID 为 43)
+        BILEOOPHJEF = (uint)Player.InventoryManager.GetItemCount(43),
+        
+        // 2. 填入技能树点数 (假设 ID 为 32)
+        TalentPoint = (uint)Player.InventoryManager.GetItemCount(32),
+        
+        // 3. 填入当前的周积分
+        DKABGHHOODP = (uint)GetRogueScore()
         };
     }
 
