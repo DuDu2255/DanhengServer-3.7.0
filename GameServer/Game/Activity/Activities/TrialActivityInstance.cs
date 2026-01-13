@@ -18,10 +18,7 @@ public class TrialActivityInstance : BaseActivityInstance
     {
         var player = ActivityManager.Player;
 
-        // --- 最小化修复：记录进入前的位置 ---
-        // 即使不新增数据库字段，也可以直接利用 player.Data 现有的记录
-        // 如果想更稳妥，建议在数据库 TrialActivityData 增加 PrePlaneId 等字段
-
+        
         await player.LineupManager!.DestroyExtraLineup(ExtraLineupType.LineupStageTrial);
 
         GameData.AvatarDemoConfigData.TryGetValue(stageId, out var excel);
