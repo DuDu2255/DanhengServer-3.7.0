@@ -224,29 +224,33 @@ public class RogueInstance : BaseRogueInstance
     }
     }
 
-   public override async ValueTask OnBattleEnd(BattleInstance battle, PVEBattleResultCsReq req)
-    {
-        foreach (var miracle in RogueMiracles.Values) miracle.OnEndBattle(battle);
-
-        if (req.EndStatus != BattleEndStatus.BattleEndWin)
-        {
-            // quit
-            await QuitRogue();
-            return;
-        }
-
-        if (CurRoom!.NextSiteIds.Count == 0)
-        {
-            // last room
-            IsWin = true;
-            await Player.SendPacket(new PacketSyncRogueExploreWinScNotify());
-        }
-        else
-        {
-            await RollBuff(battle.Stages.Count);
-            await GainMoney(Random.Shared.Next(20, 60) * battle.Stages.Count);
-        }
+  public override async ValueTask OnBattleEnd(BattleInstance battle, PVEBattleResultCsReq req)
+{
+    if (req.EndStatus != BattleEndStatus.BattleEndWin) {
+        await QuitRogue();
+        return;
     }
+
+    if (CurRoom!.NextSiteIds.Count == 0) // BOSS 战胜利
+    {
+        IsWin = true;
+        int areaId = AreaExcel.RogueAreaID;
+
+        // 记录进度
+        if (!Player.Data.RogueData.FinishedAreaIds.Contains(areaId))
+        {
+            Player.Data.RogueData.FinishedAreaIds.Add(areaId);
+            DatabaseHelper.ToSaveUidList.SafeAdd(Player.Uid); // 异步保存
+
+            // 触发解锁动效 (areaId + 1 只是简化逻辑，具体可查配置)
+            await Player.SendPacket(new SyncRogueAreaUnlockScNotify { AreaId = (uint)(areaId + 1) });
+        }
+
+        // 刷新列表状态
+        await Player.SendPacket(new PacketSyncRogueAreaNotify(Player.RogueManager.ToAreaProto()));
+        await Player.SendPacket(new PacketSyncRogueExploreWinScNotify());
+    }
+}
 
     #endregion
 
