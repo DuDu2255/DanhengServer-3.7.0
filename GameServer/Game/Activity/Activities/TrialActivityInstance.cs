@@ -44,7 +44,7 @@ public async ValueTask EndActivity(TrialActivityStatus status = TrialActivitySta
     // --- 修复警告：确保 pos 和 rot 不为 null ---
     if (player.Data.PlaneId != 0 && player.Data.PlaneId != player.SceneInstance?.PlaneId)
     {
-        // 如果 Data 里的位置信息丢失，则提供一个 new Position() 作为后备
+        // 如果 Data 里的位置信息丢失
         var safePos = player.Data.Pos ?? new Position();
         var safeRot = player.Data.Rot ?? new Position();
 
