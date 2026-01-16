@@ -1,6 +1,6 @@
 ﻿using EggLink.DanhengServer.Proto;
 using SqlSugar;
-
+using EggLink.DanhengServer.Util; // 确保 Common 项目能找到 Position 类
 namespace EggLink.DanhengServer.Database.Activity;
 
 [SugarTable("Activity")]
@@ -43,11 +43,20 @@ public class LoginActivityData
     }
 }
     
-
 public class TrialActivityData
 {
     public List<TrialActivityResultData> Activities { get; set; } = new();
     public int CurTrialStageId { get; set; } = 0;
+
+    // --- [新增字段：用于记录进入试用前的位置，实现动态原地返回] ---
+    public int PrePlaneId { get; set; } = 0; // 记录原场景 PlaneId
+    public int PreFloorId { get; set; } = 0; // 记录原场景 FloorId
+    public int PreEntryId { get; set; } = 0; // 记录原场景 EntryId
+    
+    // 记录精确坐标 (Position 类通常包含 X, Y, Z)
+    public Position PrePos { get; set; } = new(); 
+    // 记录精确旋转朝向
+    public Position PreRot { get; set; } = new(); 
 
     public List<TrialActivityInfo> ToProto()
     {
@@ -63,6 +72,7 @@ public class TrialActivityData
         return proto;
     }
 }
+
 
 public class TrialActivityResultData
 {

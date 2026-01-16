@@ -323,6 +323,27 @@ public partial class PlayerInstance(PlayerData data)
             }
         }
         this.ActivityManager?.UpdateLoginDays();
+		// --- [核心修改开始：重登拦截修正逻辑] ---
+        var trialData = ActivityManager?.Data.TrialActivityData;
+        if (trialData != null && trialData.CurTrialStageId != 0)
+        {
+            
+
+            // 2. 修正 Data 中的位置为“进去前”的记录
+            if (trialData.PrePlaneId != 0)
+            {
+                Data.PlaneId = trialData.PrePlaneId;
+                Data.FloorId = trialData.PreFloorId;
+                Data.EntryId = trialData.PreEntryId;
+                // 使用 new Position 确保对象独立
+                Data.Pos = new Position { X = trialData.PrePos.X, Y = trialData.PrePos.Y, Z = trialData.PrePos.Z };
+                Data.Rot = new Position { X = trialData.PreRot.X, Y = trialData.PreRot.Y, Z = trialData.PreRot.Z };
+            }
+
+            // 3. 重置试用状态，防止下次重登再次触发修正
+            trialData.CurTrialStageId = 0;
+            trialData.PrePlaneId = 0;
+        }
         await LoadScene(Data.PlaneId, Data.FloorId, Data.EntryId, Data.Pos!, Data.Rot!, false);
         if (SceneInstance == null) await EnterScene(2000101, 0, false);
         RogueManager?.GetRogueScore();

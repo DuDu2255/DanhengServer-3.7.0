@@ -161,29 +161,59 @@ public class RogueManager(PlayerInstance player) : BasePlayerManager(player)
         };
     }
 
-    public static RogueAreaInfo ToAreaProto()
+   // 1. 修改 ToAreaProto 逻辑
+public RogueAreaInfo ToAreaProto()
+{
+    var manager = GetCurrentManager();
+    if (manager == null) return new RogueAreaInfo();
+
+    var proto = new RogueAreaInfo();
+    foreach (var areaId in manager.RogueAreaIDList)
     {
-        var manager = GetCurrentManager();
-        if (manager == null) return new RogueAreaInfo();
-        return new RogueAreaInfo
+        proto.RogueAreaList.Add(new RogueArea
         {
-            RogueAreaList =
-            {
-                manager.RogueAreaIDList.Select(x => new RogueArea
-                {
-                    AreaId = (uint)x,
-                    AreaStatus = RogueAreaStatus.FirstPass,
-                    HasTakenReward = true
-                })
-            }
-        };
+            AreaId = (uint)areaId,
+            AreaStatus = GetAreaStatus(areaId), // 调用动态判定
+            HasTakenReward = Player.Data.RogueData.TakenRewardIds.Contains(areaId)
+        });
     }
+    return proto;
+}
+
+// 2. 新增动态判定方法
+public RogueAreaStatus GetAreaStatus(int areaId)
+{
+    // 已通关
+    if (Player.Data.RogueData.FinishedAreaIds.Contains(areaId))
+        return RogueAreaStatus.FirstPass;
+
+    // 初始开启：世界1, 2, 3-难度1
+    if (areaId == 110 || areaId == 120 || areaId == 130)
+        return RogueAreaStatus.Unlock;
+
+    // 难度递进解锁 (如 131 需要 130 通关)
+    if (areaId % 10 > 0 && Player.Data.RogueData.FinishedAreaIds.Contains(areaId - 1))
+        return RogueAreaStatus.Unlock;
+
+    // 跨世界解锁 (如 140 需要 130 通关)
+    if (areaId % 10 == 0 && Player.Data.RogueData.FinishedAreaIds.Contains(areaId - 10))
+        return RogueAreaStatus.Unlock;
+
+    return RogueAreaStatus.Lock;
+}
 
     public static RogueGetVirtualItemInfo ToVirtualItemProto()
     {
         return new RogueGetVirtualItemInfo
         {
-            // TODO: Implement
+            // 1. 填入沉浸器数量 (假设 ID 为 43)
+        BILEOOPHJEF = (uint)Player.InventoryManager.GetItemCount(43),
+        
+        // 2. 填入技能树点数 (假设 ID 为 32)
+        TalentPoint = (uint)Player.InventoryManager.GetItemCount(32),
+        
+        // 3. 填入当前的周积分
+        DKABGHHOODP = (uint)GetRogueScore()
         };
     }
 
