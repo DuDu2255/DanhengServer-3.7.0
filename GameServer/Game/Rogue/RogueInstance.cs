@@ -1,4 +1,4 @@
-﻿using EggLink.DanhengServer.Data;
+using EggLink.DanhengServer.Data;
 using EggLink.DanhengServer.Data.Custom;
 using EggLink.DanhengServer.Data.Excel;
 using EggLink.DanhengServer.Enums.Rogue;
@@ -207,50 +207,37 @@ public class RogueInstance : BaseRogueInstance
     {
         base.OnBattleStart(battle);
 
-       // --- 动态替换怪物 ID ---
-    if (CurRoom?.Excel != null)
-    {
-        // 从房间配置拿到 StageID
-        if (CurRoom.Excel.GroupWithContent.TryGetValue(CurRoom.Excel.GroupID, out int stageId))
+        GameData.RogueMapData.TryGetValue(AreaExcel.MapId, out var mapData);
+        if (mapData != null)
         {
-            // 从 StageConfigExcel 加载出的数据中提取波次
-            if (GameData.StageConfigData.TryGetValue(stageId, out var stageConfig))
-            {
-                battle.MonsterWaves = stageConfig.ToProto(); // 注入真实 BOSS
-                battle.StageId = (uint)stageId;
-                battle.WorldLevel = AreaExcel.RecommendLevel; // 修正推荐等级
-            }
+            mapData.TryGetValue(CurRoom!.SiteId, out var mapInfo);
+            if (mapInfo != null && mapInfo.LevelList.Count > 0) battle.CustomLevel = mapInfo.LevelList.RandomElement();
         }
     }
-    }
 
-  public override async ValueTask OnBattleEnd(BattleInstance battle, PVEBattleResultCsReq req)
-{
-    if (req.EndStatus != BattleEndStatus.BattleEndWin) {
-        await QuitRogue();
-        return;
-    }
-
-    if (CurRoom!.NextSiteIds.Count == 0) // BOSS 战胜利
+    public override async ValueTask OnBattleEnd(BattleInstance battle, PVEBattleResultCsReq req)
     {
-        IsWin = true;
-        int areaId = AreaExcel.RogueAreaID;
+        foreach (var miracle in RogueMiracles.Values) miracle.OnEndBattle(battle);
 
-        // 记录进度
-        if (!Player.Data.RogueData.FinishedAreaIds.Contains(areaId))
+        if (req.EndStatus != BattleEndStatus.BattleEndWin)
         {
-            Player.Data.RogueData.FinishedAreaIds.Add(areaId);
-            DatabaseHelper.ToSaveUidList.SafeAdd(Player.Uid); // 异步保存
-
-            // 触发解锁动效 (areaId + 1 只是简化逻辑，具体可查配置)
-            await Player.SendPacket(new SyncRogueAreaUnlockScNotify { AreaId = (uint)(areaId + 1) });
+            // quit
+            await QuitRogue();
+            return;
         }
 
-        // 刷新列表状态
-        await Player.SendPacket(new PacketSyncRogueAreaNotify(Player.RogueManager.ToAreaProto()));
-        await Player.SendPacket(new PacketSyncRogueExploreWinScNotify());
+        if (CurRoom!.NextSiteIds.Count == 0)
+        {
+            // last room
+            IsWin = true;
+            await Player.SendPacket(new PacketSyncRogueExploreWinScNotify());
+        }
+        else
+        {
+            await RollBuff(battle.Stages.Count);
+            await GainMoney(Random.Shared.Next(20, 60) * battle.Stages.Count);
+        }
     }
-}
 
     #endregion
 
