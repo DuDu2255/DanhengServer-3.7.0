@@ -1,24 +1,25 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
 name: .NET Release
 
 on:
   workflow_dispatch:
     inputs:
-      name:
-        description: 'Release Name'
+      create_release:
+        description: '创建Release并上传产物'
         required: true
+        default: false
+        type: boolean
+      version:
+        description: '版本号'
+        required: false
         default: '3.7.0'
-      body:
-        description: 'Release Body'
-        required: true
-        default: '3.7.0'
-  
+      release_notes:
+        description: '更新说明'
+        required: false
+        default: 'DanhengServer3.7.0，安卓代理地址https://github.com/Xuoos/AnimeGamesProxy/releases/latest'
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     permissions:
       contents: write
 
@@ -34,63 +35,51 @@ jobs:
       run: dotnet restore
 
     - name: Publish win-x64
-      run: dotnet publish Program/Program.csproj -o Release/win-x64 -r win-x64 --self-contained false --framework net9.0 -p:PublishSingleFile=true
+      run: dotnet publish Program/Program.csproj -o Release/win-x64 -r win-x64 --self-contained true --framework net9.0 -p:PublishSingleFile=true -p:DebugType=none
 
     - name: Publish linux-x64
-      run: dotnet publish Program/Program.csproj -o Release/linux-x64 -r linux-x64 --self-contained false --framework net9.0 -p:PublishSingleFile=true
+      run: dotnet publish Program/Program.csproj -o Release/linux-x64 -r linux-x64 --self-contained true --framework net9.0 -p:PublishSingleFile=true -p:DebugType=none
 
     - name: Publish linux-arm64
-      run: dotnet publish Program/Program.csproj -o Release/linux-arm64 -r linux-arm64 --self-contained false --framework net9.0 -p:PublishSingleFile=true
+      run: dotnet publish Program/Program.csproj -o Release/linux-arm64 -r linux-arm64 --self-contained true --framework net9.0 -p:PublishSingleFile=true -p:DebugType=none
 
-    - name: Publish win-x64-self-contained
-      run: dotnet publish Program/Program.csproj -o Release/win-x64-self-contained -r win-x64 --self-contained true --framework net9.0 -p:PublishSingleFile=true
+    - name: Upload win-x64 Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: DanhengServer-win-64
+        path: Release/win-x64
 
-    - name: Publish linux-x64-self-contained
-      run: dotnet publish Program/Program.csproj -o Release/linux-x64-self-contained -r linux-x64 --self-contained true --framework net9.0 -p:PublishSingleFile=true
+    - name: Upload linux-x64 Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: DanhengServer-linux-x64
+        path: Release/linux-x64
 
-    - name: Publish linux-arm64-self-contained
-      run: dotnet publish Program/Program.csproj -o Release/linux-arm64-self-contained -r linux-arm64 --self-contained true --framework net9.0 -p:PublishSingleFile=true
+    - name: Upload linux-arm64 Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: DanhengServer-linux-arm64
+        path: Release/linux-arm64
 
-    - name: Remove PDB File
+    - name: Zip artifacts for release
+      if: github.event.inputs.create_release == 'true'
       run: |
-           rm -rf Release/win-x64/*.pdb
-           rm -rf Release/linux-x64/*.pdb
-           rm -rf Release/linux-arm64/*.pdb
-           rm -rf Release/win-x64-self-contained/*.pdb
-           rm -rf Release/linux-x64-self-contained/*.pdb
-           rm -rf Release/linux-arm64-self-contained/*.pdb
+        mkdir -p z
+        cd Release
+        zip -r ../z/DanhengServer-win-x64.zip win-x64/
+        zip -r ../z/DanhengServer-linux-x64.zip linux-x64/
+        zip -r ../z/DanhengServer-linux-arm64.zip linux-arm64/
+        cd ..
 
-    - name: Zip File
-      run: |
-           mkdir z
-           cd Release
-           zip -r ../z/win-x64.zip win-x64/
-           zip -r ../z/linux-x64.zip linux-x64/
-           zip -r ../z/linux-arm64.zip linux-arm64/
-           zip -r ../z/win-x64-self-contained.zip win-x64-self-contained/
-           zip -r ../z/linux-x64-self-contained.zip linux-x64-self-contained/
-           zip -r ../z/linux-arm64-self-contained linux-arm64-self-contained/
-           cd ..
-
-    - name: Body
-      run: |
-           echo -e "${{ inputs.body }}" > z/body.txt
-
-    - name: Release
+    - name: Create GitHub Release
+      if: github.event.inputs.create_release == 'true'
       uses: softprops/action-gh-release@v2
       with:
-        body_path: z/body.txt
-        name: ${{ inputs.name }}
-        tag_name: Release-${{ github.sha }}
-        repository: mikugirls/DanhengServer-3.7.0
-        # note you'll typically need to create a personal access token
-        # with permissions to create releases in the other repo
+        name: ${{ inputs.version }}
+        tag_name: v${{ inputs.version }}
+        body: ${{ inputs.release_notes }}
         token: ${{ secrets.GITHUB_TOKEN }}
-        # upload except pdb file
         files: |
-          z/win-x64.zip
-          z/linux-x64.zip
-          z/linux-arm64.zip
-          z/win-x64-self-contained.zip
-          z/linux-x64-self-contained.zip
-          z/linux-arm64-self-contained.zip
+          z/DanhengServer-win-x64.zip
+          z/DanhengServer-linux-x64.zip
+          z/DanhengServer-linux-arm64.zip
